@@ -1,0 +1,46 @@
+{
+  "name": "@iqual/playwright-vrt",
+  "version": "0.1.9",
+  "description": "Standalone Visual Regression Testing CLI tool using Playwright",
+  "type": "module",
+  "bin": {
+    "playwright-vrt": "./dist/src/cli.js"
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "build": "tsc && cp -r tests dist/ && cp playwright.config.js dist/",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "bun run clean && bun run build",
+    "test": "bun run src/cli.ts --help",
+    "test:dist": "node dist/src/cli.js --help"
+  },
+  "keywords": [
+    "visual-regression",
+    "playwright",
+    "testing",
+    "vrt",
+    "screenshot",
+    "visual-testing",
+    "regression-testing"
+  ],
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "micromatch": "^4.0.5",
+    "playwright": "^1.40.0",
+    "sitemapper": "^3.2.6"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/micromatch": "^4.0.6",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

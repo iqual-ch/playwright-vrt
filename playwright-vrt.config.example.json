@@ -1,0 +1,31 @@
+{
+  "referenceUrl": "https://production.example.com",
+  "testUrl": "https://preview.example.com",
+  "sitemapPath": "/sitemap.xml",
+  "maxUrls": 2,
+  "exclude": [
+    "*/admin/*",
+    "*/user/*"
+  ],
+  "include": [],
+  "crawlOptions": {
+    "maxDepth": 1,
+    "removeTrailingSlash": true
+  },
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "name": "mobile",
+      "width": 375,
+      "height": 667
+    }
+  ],
+  "threshold": {
+    "maxDiffPixels": 100,
+    "maxDiffPixelRatio": 0.01
+  }
+}
