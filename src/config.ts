@@ -46,7 +46,6 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   },
   viewports: [
     { name: 'desktop', width: 1920, height: 1080 },
-    { name: 'mobile', width: 375, height: 667 },
   ],
   threshold: {
     maxDiffPixels: 100,
