@@ -37,7 +37,7 @@ function isCacheValid(snapshotDir: string, config: any): boolean {
   try {
     const stored = JSON.parse(fs.readFileSync(hashFile, 'utf-8'));
     const packageDir = path.join(__dirname, '..');
-    const testFilePath = path.join(packageDir, 'tests', 'vrt.spec.ts');
+    const testFilePath = path.join(packageDir, 'tests', 'vrt.spec.js');
 
     const currentHashes = {
       config: computeConfigHash(config),
@@ -59,7 +59,7 @@ function isCacheValid(snapshotDir: string, config: any): boolean {
  */
 function saveCacheHashes(snapshotDir: string, config: any): void {
   const packageDir = path.join(__dirname, '..');
-  const testFilePath = path.join(packageDir, 'tests', 'vrt.spec.ts');
+  const testFilePath = path.join(packageDir, 'tests', 'vrt.spec.js');
 
   const hashes = {
     config: computeConfigHash(config),
