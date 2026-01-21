@@ -17,7 +17,7 @@
     "build": "tsc && cp -r tests dist/ && cp playwright.config.js dist/",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "bun run clean && bun run build",
+    "prepublishOnly": "npm run clean && npm run build",
     "test": "bun run src/cli.ts --help",
     "test:dist": "node dist/src/cli.js --help"
   },
