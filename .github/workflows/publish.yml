@@ -18,18 +18,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
         with:
-          bun-version: latest
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: bun install
+        run: npm install
+
+      - name: Build package
+        run: npm run build
 
       - name: Run tests (if any)
-        run: bun test || echo "No tests found, skipping"
+        run: npm run test:dist || echo "No tests found, skipping"
 
       - name: Publish to NPM
-        run: bun publish --access public
-        env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
