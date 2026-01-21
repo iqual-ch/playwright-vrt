@@ -53,7 +53,7 @@ bunx @iqual/playwright-vrt run --config ./playwright-vrt.config.json
 
 ## Features
 
-- ✅ **Zero installation** - Run with `bunx`, no setup needed
+- ✅ **Zero code** - Run with `bunx`, no custom code needed
 - ✅ **Auto URL discovery** - Sitemap parsing + crawler fallback
 - ✅ **Smart caching** - Reuses URLs and baselines, avoids hitting production
 - ✅ **Multi-viewport** - Test desktop, mobile, tablet simultaneously
