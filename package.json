@@ -3,6 +3,8 @@
   "version": "0.1.10",
   "description": "Standalone Visual Regression Testing CLI tool using Playwright",
   "type": "module",
+  "repo": "github:iqual-ch/playwright-vrt",
+  "license": "Apache-2.0",
   "bin": {
     "playwright-vrt": "./dist/src/cli.js"
   },
