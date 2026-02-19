@@ -1,10 +1,14 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import { fileURLToPath } from 'url';
 import type { VRTConfig } from './config.js';
 import { resolvePlaywrightCli } from './browser.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export interface TestResults {
   passed: number;
@@ -194,8 +198,8 @@ async function parseResults(outputDir: string): Promise<TestResults> {
   const resultsPath = path.join(outputDir, 'results.json');
 
   try {
-    const file = Bun.file(resultsPath);
-    const results = await file.json();
+    const raw = fs.readFileSync(resultsPath, 'utf-8');
+    const results = JSON.parse(raw);
 
     let passed = 0;
     let failed = 0;

@@ -7,7 +7,7 @@ Zero-installation visual regression testing (VRT) that runs directly in CI/CD. S
 ## Quick Start
 
 ```sh
-bunx @iqual/playwright-vrt run \
+npx @iqual/playwright-vrt run \
   --reference https://production.example.com \
   --test https://staging.example.com
 ```
@@ -25,7 +25,7 @@ That's it! The tool will:
 
 ## Why Use This?
 
-- **No per-project code setup** - Just run `bunx @iqual/playwright-vrt run --test <url>` or `--config <file>`
+- **No per-project code setup** - Just run `npx @iqual/playwright-vrt run --test <url>` or `--config <file>`
 - **Smart defaults** - Works without a config file
 - **Flexible** - Use CLI args for quick tests, config files for complex setups
 - **CI/CD optimized** - Allows caching baselines, auto-detects config changes
@@ -48,12 +48,12 @@ Then run the VRT using the `--config` flag:
 
 ```bash
 # Run with config file (includes both URLs)
-bunx @iqual/playwright-vrt run --config ./playwright-vrt.config.json
+npx @iqual/playwright-vrt run --config ./playwright-vrt.config.json
 ```
 
 ## Features
 
-- ✅ **Zero code** - Run with `bunx`, no custom code needed
+- ✅ **Zero code** - Run with `npx`, no custom code needed
 - ✅ **Auto browser install** - Automatically installs the correct Chromium version
 - ✅ **Auto URL discovery** - Sitemap parsing + crawler fallback
 - ✅ **Smart caching** - Reuses URLs and baselines, avoids hitting production
@@ -87,7 +87,7 @@ Full config example (includes URLs + advanced settings):
 ## CLI Options
 
 ```bash
-bunx @iqual/playwright-vrt run \
+npx @iqual/playwright-vrt run \
   --test <url>           # Test URL (required if no config)
   --config <path>        # Config file (required if no --test)
   --reference <url>      # Reference URL (optional, for comparison)
@@ -150,7 +150,7 @@ The hash is based on the **final merged config object**, not the config file its
 **Force update:**
 
 ```bash
-bunx @iqual/playwright-vrt run --config config.json --update-baseline
+npx @iqual/playwright-vrt run --config config.json --update-baseline
 ```
 
 This regenerates both URLs and baseline snapshots from the reference system regardless of cache validity.
@@ -164,11 +164,13 @@ This regenerates both URLs and baseline snapshots from the reference system rega
 ## GitHub Actions
 
 ```yaml
-- name: Setup Bun
-  uses: oven-sh/setup-bun@v1
+- name: Setup Node.js
+  uses: actions/setup-node@v6
+  with:
+    node-version: '24'
 
 # Cache baseline snapshots to avoid hitting production on every run
-- uses: actions/cache@v4
+- uses: actions/cache@v5
   with:
     path: playwright-snapshots
     key: vrt-baseline-${{ hashFiles('playwright-vrt.config.json') }}
@@ -177,12 +179,12 @@ This regenerates both URLs and baseline snapshots from the reference system rega
 - name: Run Visual regression tests
   shell: bash
   run: |
-    bunx @iqual/playwright-vrt run \
+    npx @iqual/playwright-vrt run \
       --config playwright-vrt.config.json \
       --verbose
 
 - name: Upload VRT report
-  uses: actions/upload-artifact@v4
+  uses: actions/upload-artifact@v6
   if: always()
   with:
     name: vrt-report
@@ -207,6 +209,5 @@ All URLs and baseline snapshots are cached in `playwright-snapshots/` to minimiz
 
 ## Requirements
 
-- [Bun](https://bun.sh) runtime (for `bunx` command)
+- [Node.js](https://nodejs.org) v24+ (for `npx` command)
 - Chromium is installed automatically (use `--skip-install` to disable)
-- NPM/Yarn and Node should also be supported.

@@ -1,4 +1,6 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
+
+import * as fs from 'fs';
 
 export interface VRTConfig {
   referenceUrl: string;
@@ -56,8 +58,8 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
 
 export async function loadConfig(configPath: string): Promise<VRTConfig> {
   try {
-    const file = Bun.file(configPath);
-    const config = await file.json();
+    const raw = fs.readFileSync(configPath, 'utf-8');
+    const config = JSON.parse(raw);
 
     // Merge with defaults
     return {

@@ -16,12 +16,12 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "bun run src/cli.ts",
+    "dev": "npx tsx src/cli.ts",
     "build": "tsc && cp -r tests dist/ && cp playwright.config.js dist/",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run clean && npm run build",
-    "test": "bun run src/cli.ts --help",
+    "test": "npx tsx src/cli.ts --help",
     "test:dist": "node dist/src/cli.js --help"
   },
   "keywords": [
@@ -40,9 +40,9 @@
     "sitemapper": "^3.2.6"
   },
   "devDependencies": {
-    "@types/bun": "latest",
     "@types/micromatch": "^4.0.6",
     "@types/node": "^20.10.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.3.0"
   },
   "peerDependencies": {

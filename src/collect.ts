@@ -1,5 +1,6 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
+import * as fs from 'fs';
 import Sitemapper from 'sitemapper';
 import micromatch from 'micromatch';
 import { chromium } from 'playwright';
@@ -167,5 +168,5 @@ function filterURLs(urls: string[], baseUrl: string, include: string[], exclude:
 
 export function saveURLs(urls: string[], filepath: string): void {
   const content = JSON.stringify(urls, null, 2);
-  Bun.write(filepath, content);
+  fs.writeFileSync(filepath, content, 'utf-8');
 }

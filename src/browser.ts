@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import { createRequire } from 'module';
 import { spawn } from 'child_process';
@@ -7,7 +7,7 @@ import * as fs from 'fs';
 
 /**
  * Resolve the path to the @playwright/test CLI bundled with this package.
- * Works both in dev (bun run src/cli.ts) and when installed via bunx.
+ * Works both in dev (npx ts-node/tsx) and when installed via npx.
  */
 export function resolvePlaywrightCli(): string {
   const require = createRequire(import.meta.url);

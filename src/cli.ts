@@ -1,12 +1,16 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { fileURLToPath } from 'url';
 import { loadConfig, validateConfig, type CLIOptions } from './config.js';
 import { collectURLs } from './collect.js';
 import { runVisualTests, printResults, hasExistingSnapshots } from './runner.js';
 import { ensureBrowserInstalled } from './browser.js';
 import { createHash } from 'crypto';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Compute SHA-256 hash of a file
@@ -93,7 +97,7 @@ async function main() {
       config = await loadConfig(configPath);
     } else {
       // Use defaults
-      const { DEFAULT_CONFIG } = await import('./config');
+      const { DEFAULT_CONFIG } = await import('./config.js');
       config = { ...DEFAULT_CONFIG } as any;
     }
 
@@ -320,18 +324,18 @@ Optional:
 
 Examples:
   # Minimal - compare staging against itself (first run creates baseline)
-  bunx playwright-vrt run --test https://staging.example.com
+  npx @iqual/playwright-vrt run --test https://staging.example.com
 
   # Compare staging against production
-  bunx playwright-vrt run \\
+  npx @iqual/playwright-vrt run \\
     --reference https://production.com \\
     --test https://staging.com
 
   # With config file only (contains testUrl and referenceUrl)
-  bunx playwright-vrt run --config ./playwright-vrt.config.json
+  npx @iqual/playwright-vrt run --config ./playwright-vrt.config.json
 
   # With config file + URL override
-  bunx playwright-vrt run \\
+  npx @iqual/playwright-vrt run \\
     --test https://preview-123.staging.com \\
     --config ./playwright-vrt.config.json
 
