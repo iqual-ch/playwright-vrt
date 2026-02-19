@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import { loadConfig, validateConfig, type CLIOptions } from './config.js';
 import { collectURLs } from './collect.js';
 import { runVisualTests, printResults, hasExistingSnapshots } from './runner.js';
+import { ensureBrowserInstalled } from './browser.js';
 import { createHash } from 'crypto';
 
 /**
@@ -111,6 +112,11 @@ async function main() {
     if (args.maxUrls) config.maxUrls = args.maxUrls;
 
     validateConfig(config);
+
+    // Ensure Chromium is installed (unless --skip-install)
+    if (!args.skipInstall) {
+      await ensureBrowserInstalled(args.verbose);
+    }
 
     console.log('🚀 Starting Visual Regression Testing');
     console.log(`   Reference: ${config.referenceUrl}`);
@@ -265,6 +271,9 @@ function parseArgs(): CLIOptions {
       case '--update-baseline':
         args.updateBaseline = true;
         break;
+      case '--skip-install':
+        args.skipInstall = true;
+        break;
       case '--clean':
         // Clean snapshots and reports
         console.log('🗑️  Cleaning...');
@@ -305,6 +314,7 @@ Optional:
   --verbose              Detailed logging
   --headed               Run browser in headed mode (visible)
   --update-baseline      Force regenerate URLs and baseline snapshots
+  --skip-install         Skip automatic Chromium browser installation
   --clean                Clean playwright-snapshots/ and playwright-report/
   --help, -h             Show this help message
 

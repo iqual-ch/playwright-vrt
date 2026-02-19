@@ -6,15 +6,15 @@ Zero-installation visual regression testing (VRT) that runs directly in CI/CD. S
 
 ## Quick Start
 
-```
-bunx playwright install chromium
-
+```sh
 bunx @iqual/playwright-vrt run \
   --reference https://production.example.com \
   --test https://staging.example.com
 ```
 
 That's it! The tool will:
+
+- Auto-install the correct Chromium version (matching the pinned Playwright dependency)
 - Auto-discover URLs from your sitemap (or crawl the homepage)
 - Create baseline screenshots from the reference URL
 - Compare against test environment
@@ -54,6 +54,7 @@ bunx @iqual/playwright-vrt run --config ./playwright-vrt.config.json
 ## Features
 
 - ✅ **Zero code** - Run with `bunx`, no custom code needed
+- ✅ **Auto browser install** - Automatically installs the correct Chromium version
 - ✅ **Auto URL discovery** - Sitemap parsing + crawler fallback
 - ✅ **Smart caching** - Reuses URLs and baselines, avoids hitting production
 - ✅ **Multi-viewport** - Test desktop, mobile, tablet simultaneously
@@ -95,6 +96,7 @@ bunx @iqual/playwright-vrt run \
   --project <name>       # Test specific viewport only
   --verbose              # Detailed logging
   --update-baseline      # Force regenerate URLs and baseline snapshots
+  --skip-install         # Skip automatic Chromium installation
   --clean                # Remove all cached data
 
 Note: If no --reference is provided and no baseline exists, you must use --update-baseline
@@ -107,11 +109,13 @@ Note: If no --reference is provided and no baseline exists, you must use --updat
 The tool requires a **reference URL** or an **existing baseline** to run:
 
 **With explicit reference URL:**
+
 - Provided via `--reference` flag or `referenceUrl` in config
 - Baseline is created/updated from the reference system
 - Test URL is compared against this baseline
 
 **Without explicit reference URL:**
+
 - **First run**: You must use `--update-baseline` to create initial baseline from test URL
 - **Subsequent runs**: Compares test URL against cached baseline
 - Fails if no baseline exists and `--update-baseline` not set
@@ -170,11 +174,6 @@ This regenerates both URLs and baseline snapshots from the reference system rega
     key: vrt-baseline-${{ hashFiles('playwright-vrt.config.json') }}
     restore-keys: vrt-baseline-
 
-- name: Install Playwright VRT dependencies
-  shell: bash
-  run: |
-    bunx playwright install chromium
-
 - name: Run Visual regression tests
   shell: bash
   run: |
@@ -209,5 +208,5 @@ All URLs and baseline snapshots are cached in `playwright-snapshots/` to minimiz
 ## Requirements
 
 - [Bun](https://bun.sh) runtime (for `bunx` command)
-- Playwright `bunx playwright install chromium`
+- Chromium is installed automatically (use `--skip-install` to disable)
 - NPM/Yarn and Node should also be supported.

@@ -4,6 +4,7 @@ import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { VRTConfig } from './config.js';
+import { resolvePlaywrightCli } from './browser.js';
 
 export interface TestResults {
   passed: number;
@@ -129,8 +130,8 @@ interface PlaywrightRunOptions {
 
 async function runPlaywright(options: PlaywrightRunOptions): Promise<number> {
   return new Promise((resolve, reject) => {
+    const cliPath = resolvePlaywrightCli();
     const args = [
-      'playwright',
       'test',
       '--config', options.configPath
     ];
@@ -154,10 +155,10 @@ async function runPlaywright(options: PlaywrightRunOptions): Promise<number> {
       OUTPUT_DIR: options.outputDir,
     };
 
-    const proc = spawn('bunx', args, {
+    const proc = spawn('node', [cliPath, ...args], {
       env,
       stdio: options.verbose ? 'inherit' : 'pipe',
-      shell: true,
+      shell: false,
       cwd: process.cwd(),
     });    let stdout = '';
     let stderr = '';

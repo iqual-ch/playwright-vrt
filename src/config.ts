@@ -33,6 +33,7 @@ export interface CLIOptions {
   identifier?: string;
   updateBaseline?: boolean;
   headed?: boolean;
+  skipInstall?: boolean;
 }
 
 export const DEFAULT_CONFIG: Partial<VRTConfig> = {
