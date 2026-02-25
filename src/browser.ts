@@ -45,7 +45,7 @@ export async function ensureBrowserInstalled(verbose?: boolean): Promise<void> {
   }
 
   return new Promise((resolve, reject) => {
-    const proc = spawn('node', [cliPath, 'install', 'chromium'], {
+    const proc = spawn('node', [cliPath, 'install', '--with-deps', 'chromium'], {
       stdio: verbose ? 'inherit' : 'pipe',
       shell: false,
     });
