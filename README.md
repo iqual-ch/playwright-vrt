@@ -1,4 +1,4 @@
-# iqual Playwright VRT
+# iqual VRT
 
 **Standalone Visual Regression Testing CLI tool using [Playwright](https://github.com/microsoft/playwright) 🎭**
 
@@ -163,33 +163,27 @@ This regenerates both URLs and baseline snapshots from the reference system rega
 
 ## GitHub Actions
 
+This project provides a composite GitHub Action for easy integration. It handles Node.js setup, baseline caching, running the tests, and uploading the report artifact.
+
+
 ```yaml
-- name: Setup Node.js
-  uses: actions/setup-node@v6
+- name: Visual Regression Tests
+  uses: iqual-ch/playwright-vrt@v0
   with:
-    node-version: '24'
-
-# Cache baseline snapshots to avoid hitting production on every run
-- uses: actions/cache@v5
-  with:
-    path: playwright-snapshots
-    key: vrt-baseline-${{ hashFiles('playwright-vrt.config.json') }}
-    restore-keys: vrt-baseline-
-
-- name: Run Visual regression tests
-  shell: bash
-  run: |
-    npx @iqual/playwright-vrt run \
-      --config playwright-vrt.config.json \
-      --verbose
-
-- name: Upload VRT report
-  uses: actions/upload-artifact@v6
-  if: always()
-  with:
-    name: vrt-report
-    path: playwright-report/
+    config: ./playwright-vrt.config.json
 ```
+
+### Action Inputs
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| `config` | Path to `playwright-vrt.config.json` file | No | |
+| `node-version` | Node.js version to use | No | `24` |
+| `cache` | Enable caching of baseline snapshots | No | `true` |
+| `cache-key` | Custom additional cache key for baseline snapshots | No | `default` |
+| `upload-report` | Upload Playwright HTML report as artifact | No | `true` |
+| `report-name` | Name of the uploaded report artifact | No | `vrt-report` |
+| `working-directory` | Working directory for the VRT run | No | `.` |
 
 ## How It Works
 
