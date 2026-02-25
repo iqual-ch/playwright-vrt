@@ -10,7 +10,7 @@ inputs:
   config:
     description: 'Path to playwright-vrt.config.json file'
     required: true
-    default: './playwright-vrt.config.json'
+    default: 'playwright-vrt.config.json'
   node-version:
     description: 'Node.js version to use'
     required: false
