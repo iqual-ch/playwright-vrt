@@ -1,0 +1,44 @@
+name: Update Major Version Tag
+
+on:
+  workflow_run:
+    workflows: ["Publish to NPM"]
+    types:
+      - completed
+
+jobs:
+  update-tag:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract major version and update tag
+        run: |
+          # Get the tag that triggered the publish workflow
+          TAG="${{ github.event.workflow_run.head_branch }}"
+
+          # Validate semver tag format
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag '$TAG' is not a valid semver tag, skipping."
+            exit 0
+          fi
+
+          # Extract major version (e.g., v0 from v0.3.2)
+          MAJOR=$(echo "$TAG" | grep -oP '^v[0-9]+')
+          echo "Updating major version tag: $MAJOR -> $TAG"
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Force-update the major version tag
+          git tag -fa "$MAJOR" -m "Update $MAJOR tag to $TAG"
+          git push origin "$MAJOR" --force
