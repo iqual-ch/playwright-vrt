@@ -1,6 +1,6 @@
 {
   "name": "@iqual/playwright-vrt",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Standalone Visual Regression Testing CLI tool using Playwright",
   "type": "module",
   "repository": {
