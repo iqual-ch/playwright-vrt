@@ -170,7 +170,7 @@ This project provides a composite GitHub Action for easy integration. It handles
 - name: Visual Regression Tests
   uses: iqual-ch/playwright-vrt@v0
   with:
-    config: ./playwright-vrt.config.json
+    config: playwright-vrt.config.json
 ```
 
 ### Action Inputs
