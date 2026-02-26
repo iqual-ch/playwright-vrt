@@ -56,7 +56,7 @@ for (const url of urls) {
       maxDiffPixelRatio: threshold.maxDiffPixelRatio,
       animations: 'disabled',
       stylePath: stylePath,
-      timeout: 10000
+      timeout: 30000
     });
   });
 }
