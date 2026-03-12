@@ -45,6 +45,9 @@ export default {
     trace: 'retain-on-failure',
     screenshot: 'on',
     ignoreHTTPSErrors: ignoreHTTPSErrors,
+    extraHTTPHeaders: {
+      'X-Automated-By': 'iqual/playwright-vrt',
+    },
     launchOptions: {
       slowMo: 100,
     },
