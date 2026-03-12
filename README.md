@@ -80,6 +80,9 @@ Full config example (includes URLs + advanced settings):
   "threshold": {
     "maxDiffPixels": 100,
     "maxDiffPixelRatio": 0.01
+  },
+  "extraHTTPHeaders": {
+    "Authorization": "Basic dXNlcjpwYXNz"
   }
 }
 ```
@@ -164,7 +167,6 @@ This regenerates both URLs and baseline snapshots from the reference system rega
 ## GitHub Actions
 
 This project provides a composite GitHub Action for easy integration. It handles Node.js setup, baseline caching, running the tests, and uploading the report artifact.
-
 
 ```yaml
 - name: Visual Regression Tests

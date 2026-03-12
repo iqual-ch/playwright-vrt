@@ -47,6 +47,7 @@ export default {
     ignoreHTTPSErrors: ignoreHTTPSErrors,
     extraHTTPHeaders: {
       'X-Automated-By': 'iqual/playwright-vrt',
+      ...(vrtConfig.extraHTTPHeaders || {}),
     },
     launchOptions: {
       slowMo: 100,

@@ -22,6 +22,7 @@ export interface VRTConfig {
     maxDiffPixels?: number;
     maxDiffPixelRatio?: number;
   };
+  extraHTTPHeaders?: Record<string, string>;
 }
 
 export interface CLIOptions {
@@ -54,6 +55,7 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
     maxDiffPixels: 100,
     maxDiffPixelRatio: 0.01,
   },
+  extraHTTPHeaders: {},
 };
 
 export async function loadConfig(configPath: string): Promise<VRTConfig> {
@@ -73,6 +75,10 @@ export async function loadConfig(configPath: string): Promise<VRTConfig> {
       threshold: {
         ...DEFAULT_CONFIG.threshold,
         ...config.threshold,
+      },
+      extraHTTPHeaders: {
+        ...DEFAULT_CONFIG.extraHTTPHeaders,
+        ...config.extraHTTPHeaders,
       },
     };
   } catch (error) {

@@ -27,5 +27,8 @@
   "threshold": {
     "maxDiffPixels": 100,
     "maxDiffPixelRatio": 0.01
+  },
+  "extraHTTPHeaders": {
+    "Authorization": "Basic dXNlcjpwYXNz"
   }
 }
