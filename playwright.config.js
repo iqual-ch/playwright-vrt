@@ -48,6 +48,9 @@ export default {
     launchOptions: {
       slowMo: 100,
     },
+    contextOptions: {
+      reducedMotion: 'reduce',
+    },
   },
 
   // Create a project for each viewport
