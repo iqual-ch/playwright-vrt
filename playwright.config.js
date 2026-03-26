@@ -17,7 +17,7 @@ export default {
   testMatch: '**/*.spec.js', // JavaScript test files
   fullyParallel: true,
   retries: process.env.CI ? 2 : 1,
-  workers: 3,
+  workers: 2,
   timeout: 60000,
 
   // Store snapshots in playwright-snapshots/ for easy caching
