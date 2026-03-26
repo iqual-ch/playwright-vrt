@@ -37,7 +37,7 @@ for (const url of urls) {
     const fullPath = pageUrl.pathname + pageUrl.search;
     await page.goto(fullPath, {
       waitUntil: 'networkidle',
-      timeout: 30000
+      timeout: 60000
     });
 
     // Wait for fonts to load
