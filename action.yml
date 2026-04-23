@@ -45,7 +45,7 @@ runs:
   using: 'composite'
   steps:
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ inputs.node-version }}
 
@@ -74,7 +74,7 @@ runs:
 
     - name: Upload VRT report
       if: always() && inputs.upload-report == 'true'
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.report-name }}
         path: ${{ inputs.working-directory }}/playwright-report/
