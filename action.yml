@@ -14,7 +14,7 @@ inputs:
   node-version:
     description: 'Node.js version to use'
     required: false
-    default: '24'
+    default: '24.15'
   cache:
     description: 'Enable caching of baseline snapshots'
     required: false
