@@ -104,6 +104,7 @@ Full config example (includes URLs + advanced settings):
 | `hide` | `[]` | Additional CSS selectors removed with `display: none`. Merged with the built-in list (common cookie banners and chat widgets; see also `tests/vrt.css`). `hideDefaults: false` disables the built-in list. |
 | `locale` / `timezoneId` | `de-CH` / `Europe/Zurich` | Browser locale and timezone for both sides. |
 | `workers` | `2` | Parallel Playwright workers. |
+| `preflight` | `true` | One plain request per URL on both hosts before the screenshots: warms up a cold test site, follows an on-host redirect of the reference (e.g. `/` → `/de`) so both sides are compared on the same path, and logs status anomalies. Nothing is excluded by pre-flight. |
 | `settle.scroll` | `true` | Scroll through the page once before the capture so lazy images and scroll-triggered effects fire identically on both sides. |
 | `settle.waitForImages` | `true` | Wait (max 10 s) until all `<img>` have loaded or failed. |
 
@@ -180,7 +181,7 @@ This regenerates both URLs and baseline snapshots from the reference system rega
 
 **Directory structure:**
 
-- `playwright-snapshots/` - Cached URLs + baseline screenshots (cache this in CI!)
+- `playwright-snapshots/` - Cached URLs + baseline screenshots + `plan.json` (cache this in CI!)
 - `playwright-report/` - HTML test report + results
 - `playwright-tmp/` - Temporary test artifacts (auto-cleared)
 
@@ -211,9 +212,10 @@ This project provides a composite GitHub Action for easy integration. It handles
 
 1. **Collect URLs** - Parse sitemap or crawl site (cached after first run)
 2. **Filter & limit** - Apply include/exclude patterns, limit to maxUrls
-3. **Create baseline** - Screenshot all URLs from `referenceUrl` (cached after first run)
-4. **Run tests** - Screenshot all URLs from `testUrl` and compare
-5. **Generate report** - Create Playwright HTML report with diffs
+3. **Pre-flight** - One request per URL on both hosts (warm-up, redirects, status log)
+4. **Create baseline** - Screenshot all URLs from `referenceUrl` (cached after first run)
+5. **Run tests** - Screenshot all URLs from `testUrl` and compare. Before each capture the page is scrolled through once, images and fonts are awaited, third-party hosts from `blockHosts` are blocked, and `mask`/`hide` selectors are applied.
+6. **Generate report** - Create Playwright HTML report with diffs
 
 All URLs and baseline snapshots are cached in `playwright-snapshots/` to minimize load on your production system.
 

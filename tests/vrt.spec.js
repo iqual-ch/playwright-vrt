@@ -7,22 +7,34 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load URLs from playwright-snapshots/ (shared with snapshots for easy caching)
-const urlsPath = join(process.cwd(), 'playwright-snapshots', 'urls.json');
+// Run state lives in playwright-snapshots/ next to the baseline
+const snapshotDir = join(process.cwd(), 'playwright-snapshots');
+const planPath = join(snapshotDir, 'plan.json');
+const urlsPath = join(snapshotDir, 'urls.json');
 
 // CSS file is in the same directory as this test file
 const stylePath = join(__dirname, 'vrt.css');
 
-if (!existsSync(urlsPath)) {
-  throw new Error(`URLs file not found at ${urlsPath}. Did you run URL collection?`);
-}
-
-const urls = JSON.parse(readFileSync(urlsPath, 'utf-8'));
-
-// Load config for threshold settings
+// Config passed in by the CLI, already merged with defaults
 const vrtConfig = process.env.VRT_CONFIG
   ? JSON.parse(process.env.VRT_CONFIG)
   : {};
+
+// The plan is written by the CLI: one entry per URL with the path to navigate to.
+function loadPlan() {
+  if (existsSync(planPath)) {
+    return JSON.parse(readFileSync(planPath, 'utf-8')).entries;
+  }
+  if (!existsSync(urlsPath)) {
+    throw new Error(`URLs file not found at ${urlsPath}. Did you run URL collection?`);
+  }
+  return JSON.parse(readFileSync(urlsPath, 'utf-8')).map((url) => {
+    const u = new URL(url);
+    return { url, path: u.pathname + u.search };
+  });
+}
+
+const entries = loadPlan();
 
 const threshold = vrtConfig.threshold || { maxDiffPixels: 500 };
 
@@ -65,13 +77,10 @@ test.beforeEach(async ({ page }) => {
 });
 
 // Create a test for each URL
-for (const url of urls) {
-  test(`VRT: ${url}`, async ({ page }, testInfo) => {
-    const pageUrl = new URL(url);
-    const fullPath = pageUrl.pathname + pageUrl.search;
-
+for (const entry of entries) {
+  test(`VRT: ${entry.url}`, async ({ page }, testInfo) => {
     // Wait for `load`, then give the network a bounded chance to settle; `networkidle` alone can hang on polling widgets.
-    await page.goto(fullPath, { waitUntil: 'load', timeout: GOTO_TIMEOUT });
+    await page.goto(entry.path, { waitUntil: 'load', timeout: GOTO_TIMEOUT });
     await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT }).catch(() => undefined);
 
     if (hideSelectors.length > 0) {

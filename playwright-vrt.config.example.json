@@ -36,6 +36,7 @@
   "locale": "de-CH",
   "timezoneId": "Europe/Zurich",
   "workers": 2,
+  "preflight": true,
   "settle": {
     "scroll": true,
     "waitForImages": true

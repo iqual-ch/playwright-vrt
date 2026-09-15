@@ -42,6 +42,8 @@ export interface VRTConfig {
   timezoneId?: string;
   /** Playwright workers for the screenshot runs. */
   workers?: number;
+  /** One request per URL on both hosts before the screenshots (warm-up, redirects, status log). */
+  preflight?: boolean;
   settle?: {
     /** Scroll through the page once before the capture. */
     scroll?: boolean;
@@ -171,6 +173,7 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   locale: 'de-CH',
   timezoneId: 'Europe/Zurich',
   workers: 2,
+  preflight: true,
   settle: {
     scroll: true,
     waitForImages: true,
