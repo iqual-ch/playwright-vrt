@@ -45,10 +45,7 @@ export default {
     trace: 'retain-on-failure',
     screenshot: 'on',
     ignoreHTTPSErrors: ignoreHTTPSErrors,
-    extraHTTPHeaders: {
-      'X-Automated-By': 'iqual/playwright-vrt',
-      ...(vrtConfig.extraHTTPHeaders || {}),
-    },
+    extraHTTPHeaders: vrtConfig.extraHTTPHeaders || {},
     launchOptions: {
       slowMo: 100,
     },

@@ -55,7 +55,9 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
     maxDiffPixels: 100,
     maxDiffPixelRatio: 0.01,
   },
-  extraHTTPHeaders: {},
+  extraHTTPHeaders: {
+    'X-Automated-By': 'iqual/playwright-vrt',
+  },
 };
 
 /**

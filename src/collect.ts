@@ -16,14 +16,15 @@ export interface URLCollectionResult {
 export async function collectURLs(config: VRTConfig): Promise<URLCollectionResult> {
   let urls: string[] = [];
   let source: 'sitemap' | 'crawl' = 'sitemap';
+  const headers = config.extraHTTPHeaders || {};
 
   // Try sitemap first
   try {
-    urls = await collectFromSitemap(config.referenceUrl, config.sitemapPath || '/sitemap.xml');
+    urls = await collectFromSitemap(config.referenceUrl, config.sitemapPath || '/sitemap.xml', headers);
   } catch (error) {
-    console.warn('⚠️ Sitemap fetch failed, falling back to crawler');
+    console.warn(`⚠️ Sitemap fetch failed (${error instanceof Error ? error.message : error}), falling back to crawler`);
     // Fallback to crawling
-    urls = await crawlWebsite(config.referenceUrl, config.crawlOptions);
+    urls = await crawlWebsite(config.referenceUrl, config.crawlOptions, headers);
     source = 'crawl';
   }
 
@@ -48,18 +49,20 @@ export async function collectURLs(config: VRTConfig): Promise<URLCollectionResul
   };
 }
 
-async function collectFromSitemap(baseUrl: string, sitemapPath: string): Promise<string[]> {
+async function collectFromSitemap(baseUrl: string, sitemapPath: string, headers: Record<string, string>): Promise<string[]> {
   const sitemapUrl = new URL(sitemapPath, baseUrl).toString();
 
   const sitemap = new Sitemapper({
     url: sitemapUrl,
     timeout: 15000,
+    requestHeaders: headers,
   });
 
-  const { sites } = await sitemap.fetch();
+  const { sites, errors } = await sitemap.fetch();
 
   if (!sites || sites.length === 0) {
-    throw new Error('No URLs found in sitemap');
+    const detail = errors && errors.length > 0 ? errors.map((e: any) => e.message || e.type || String(e)).join('; ') : 'No URLs found in sitemap';
+    throw new Error(detail);
   }
 
   return sites;
@@ -67,14 +70,16 @@ async function collectFromSitemap(baseUrl: string, sitemapPath: string): Promise
 
 async function crawlWebsite(
   baseUrl: string,
-  options?: VRTConfig['crawlOptions']
+  options?: VRTConfig['crawlOptions'],
+  headers?: Record<string, string>,
 ): Promise<string[]> {
   const urls = new Set<string>();
 
   console.log('   Using crawler (homepage links only)...');
 
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+  // The crawler only visits the reference host.
+  const page = await browser.newPage({ extraHTTPHeaders: headers });
 
   const baseUrlObj = new URL(baseUrl);
 
