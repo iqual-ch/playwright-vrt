@@ -20,7 +20,7 @@ inputs:
     required: false
     default: 'true'
   cache-key:
-    description: 'Custom cache key for baseline snapshots'
+    description: 'Additional cache key for baseline snapshots (the CLI version and the config hash are always part of the key)'
     required: false
     default: 'default'
   upload-report:
@@ -53,12 +53,20 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
+    # Every CLI release starts a fresh cache: a changed test file invalidates the baseline anyway.
+    - name: Resolve CLI version
+      id: cli-version
+      if: inputs.cache == 'true'
+      shell: bash
+      run: echo "version=$(npm view @iqual/playwright-vrt version)" >> "$GITHUB_OUTPUT"
+
+    # Saved only when the job succeeds, so a failed run never caches a broken baseline.
     - name: Restore baseline cache
       if: inputs.cache == 'true'
       uses: actions/cache@v5
       with:
         path: ${{ inputs.working-directory }}/playwright-snapshots
-        key: vrt-baseline-${{ inputs.cache-key }}-${{ hashFiles(inputs.working-directory != '.' && format('{0}/{1}', inputs.working-directory, inputs.config) || inputs.config) }}
+        key: vrt-baseline-${{ inputs.cache-key }}-${{ steps.cli-version.outputs.version }}-${{ hashFiles(inputs.working-directory != '.' && format('{0}/{1}', inputs.working-directory, inputs.config) || inputs.config) }}
 
     - name: Run Visual Regression Tests
       id: run-vrt

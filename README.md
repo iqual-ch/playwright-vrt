@@ -203,7 +203,7 @@ This project provides a composite GitHub Action for easy integration. It handles
 | `config` | Path to `playwright-vrt.config.json` file | No | |
 | `node-version` | Node.js version to use | No | `24` |
 | `cache` | Enable caching of baseline snapshots | No | `true` |
-| `cache-key` | Custom additional cache key for baseline snapshots | No | `default` |
+| `cache-key` | Additional cache key for baseline snapshots. The CLI version and the config file hash are always part of the key, and the cache is only saved when the run succeeds. | No | `default` |
 | `upload-report` | Upload Playwright HTML report as artifact | No | `true` |
 | `report-name` | Name of the uploaded report artifact | No | `vrt-report` |
 | `working-directory` | Working directory for the VRT run | No | `.` |
