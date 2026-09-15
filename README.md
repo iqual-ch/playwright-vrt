@@ -99,6 +99,7 @@ Full config example (includes URLs + advanced settings):
 | `threshold.maxDiffPixels` | `100` | Differing pixels tolerated per screenshot. |
 | `threshold.maxDiffPixelRatio` | `0.01` | Share of differing pixels tolerated (0–1). When both budgets are set, Playwright applies the stricter one. |
 | `extraHTTPHeaders` | `X-Automated-By: iqual/playwright-vrt` | Sent to the reference and test hosts only (sitemap fetch, crawler, screenshots), never to third-party hosts. Own headers are merged with the default. |
+| `blockHosts` | `[]` | Additional hosts to block during screenshots (`"host"` or `"*.domain"`). Merged with the built-in list (Cloudflare Turnstile, analytics, tag managers, consent CDNs, chat widgets). `blockDefaultHosts: false` disables the built-in list. |
 
 ## CLI Options
 

@@ -24,6 +24,9 @@ export interface VRTConfig {
   };
   /** Sent to the reference and test hosts only, never to third parties. */
   extraHTTPHeaders?: Record<string, string>;
+  /** Hosts to block ("host" or "*.domain"), merged with the defaults unless blockDefaultHosts is false. */
+  blockHosts?: string[];
+  blockDefaultHosts?: boolean;
 }
 
 export interface CLIOptions {
@@ -39,6 +42,42 @@ export interface CLIOptions {
   headed?: boolean;
   skipInstall?: boolean;
 }
+
+/** Third-party hosts that keep the network busy or render differently on every load. */
+export const DEFAULT_BLOCK_HOSTS: string[] = [
+  // Bot challenges
+  'challenges.cloudflare.com',
+  // Analytics / tag managers / session recording
+  '*.google-analytics.com',
+  '*.analytics.google.com',
+  '*.googletagmanager.com',
+  '*.doubleclick.net',
+  '*.googlesyndication.com',
+  '*.googleadservices.com',
+  '*.hotjar.com',
+  '*.hotjar.io',
+  '*.clarity.ms',
+  '*.mouseflow.com',
+  '*.dynamicyield.com',
+  '*.dynamicyield.eu',
+  'connect.facebook.net',
+  '*.facebook.com',
+  '*.linkedin.com',
+  'snap.licdn.com',
+  // Consent management
+  '*.cookiebot.com',
+  '*.usercentrics.eu',
+  '*.cookieyes.com',
+  '*.onetrust.com',
+  '*.cookielaw.org',
+  // Chat widgets
+  '*.superchat.com',
+  '*.superchat.de',
+  '*.superchat.at',
+  '*.userlike.com',
+  '*.intercom.io',
+  '*.crisp.chat',
+];
 
 export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   sitemapPath: '/sitemap.xml',
@@ -59,6 +98,8 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   extraHTTPHeaders: {
     'X-Automated-By': 'iqual/playwright-vrt',
   },
+  blockHosts: [],
+  blockDefaultHosts: true,
 };
 
 /**
@@ -66,7 +107,7 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
  * runner receives the final values and the config hash covers them.
  */
 export function mergeConfig(config: Partial<VRTConfig>): VRTConfig {
-  return {
+  const merged = {
     ...DEFAULT_CONFIG,
     ...config,
     crawlOptions: {
@@ -83,6 +124,17 @@ export function mergeConfig(config: Partial<VRTConfig>): VRTConfig {
       ...config.extraHTTPHeaders,
     },
   } as VRTConfig;
+
+  merged.blockHosts = uniq([
+    ...(merged.blockDefaultHosts !== false ? DEFAULT_BLOCK_HOSTS : []),
+    ...(config.blockHosts || []),
+  ]);
+
+  return merged;
+}
+
+function uniq(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
 }
 
 export async function loadConfig(configPath: string): Promise<VRTConfig> {

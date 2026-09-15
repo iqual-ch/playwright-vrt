@@ -29,6 +29,8 @@ const threshold = vrtConfig.threshold || {
   maxDiffPixelRatio: 0.01,
 };
 
+const blockHosts = (vrtConfig.blockHosts || []).map(hostPatternToRegExp);
+
 // Headers go to the hosts under test only; on third-party hosts they would fail the CORS preflight.
 const scopedHeaders = vrtConfig.extraHTTPHeaders || {};
 const ownHosts = new Set(
@@ -36,6 +38,9 @@ const ownHosts = new Set(
     .filter(Boolean)
     .map((u) => new URL(u).hostname),
 );
+
+const GOTO_TIMEOUT = 45_000;
+const NETWORK_IDLE_TIMEOUT = 10_000;
 
 test.beforeEach(async ({ page }) => {
   await page.route(() => true, async (route) => {
@@ -45,6 +50,9 @@ test.beforeEach(async ({ page }) => {
       hostname = new URL(request.url()).hostname;
     } catch {
       return route.continue();
+    }
+    if (blockHosts.some((re) => re.test(hostname))) {
+      return route.abort('blockedbyclient');
     }
     if (ownHosts.has(hostname)) {
       return route.continue({ headers: { ...request.headers(), ...scopedHeaders } });
@@ -56,13 +64,12 @@ test.beforeEach(async ({ page }) => {
 // Create a test for each URL
 for (const url of urls) {
   test(`VRT: ${url}`, async ({ page }) => {
-    // Navigate to the URL
     const pageUrl = new URL(url);
     const fullPath = pageUrl.pathname + pageUrl.search;
-    await page.goto(fullPath, {
-      waitUntil: 'networkidle',
-      timeout: 60000
-    });
+
+    // Wait for `load`, then give the network a bounded chance to settle; `networkidle` alone can hang on polling widgets.
+    await page.goto(fullPath, { waitUntil: 'load', timeout: GOTO_TIMEOUT });
+    await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT }).catch(() => undefined);
 
     // Wait for fonts to load
     await page.evaluate(() => document.fonts.ready);
@@ -83,4 +90,14 @@ for (const url of urls) {
       timeout: 30000
     });
   });
+}
+
+/** "*.example.com" matches example.com and any subdomain; plain hosts match exactly. */
+function hostPatternToRegExp(pattern) {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+  if (escaped.startsWith('\\*\\.')) {
+    const base = escaped.slice(4);
+    return new RegExp(`^(?:.+\\.)?${base}$`, 'i');
+  }
+  return new RegExp(`^${escaped.replace(/\*/g, '.*')}$`, 'i');
 }

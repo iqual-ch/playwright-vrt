@@ -30,5 +30,6 @@
   },
   "extraHTTPHeaders": {
     "Authorization": "Basic dXNlcjpwYXNz"
-  }
+  },
+  "blockHosts": ["*.example-chat-widget.com"]
 }

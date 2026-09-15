@@ -86,9 +86,10 @@ async function crawlWebsite(
   try {
     // Visit the homepage
     await page.goto(baseUrl, {
-      waitUntil: 'networkidle',
+      waitUntil: 'load',
       timeout: 30000
     });
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => undefined);
 
     // Add the homepage itself, by adding the current page URL
     urls.add(page.url());
