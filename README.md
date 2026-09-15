@@ -236,6 +236,18 @@ All URLs and baseline snapshots are cached in `playwright-snapshots/` to minimiz
 - `1` - Visual differences detected, or URLs without a baseline from the reference host
 - `2` - Configuration or runtime error, or no baseline could be created at all
 
+## Development
+
+```bash
+npm ci
+npm run typecheck
+npm run build
+npm run test:unit
+npm run test:e2e
+```
+
+Unit tests live in `test/unit/` (run with tsx against the sources). E2E tests in `test/e2e/` start two local HTTP servers and run the built CLI against them (they need the built `dist/` and an installed Chromium). Both run on GitHub Actions for pushes to `main` and pull requests.
+
 ## Requirements
 
 - [Node.js](https://nodejs.org) v24+ (for `npx` command)

@@ -30,8 +30,8 @@ jobs:
       - name: Build package
         run: npm run build
 
-      - name: Run tests (if any)
-        run: npm run test:dist || echo "No tests found, skipping"
+      - name: Run unit tests
+        run: npm run test:unit
 
       - name: Publish to NPM
         run: npm publish --access public
