@@ -33,6 +33,11 @@ export interface VRTConfig {
   /** Selectors to hide (display: none), merged with the defaults unless hideDefaults is false. */
   hide?: string[];
   hideDefaults?: boolean;
+  /** Browser locale and timezone for both sides. */
+  locale?: string;
+  timezoneId?: string;
+  /** Playwright workers for the screenshot runs. */
+  workers?: number;
   settle?: {
     /** Scroll through the page once before the capture. */
     scroll?: boolean;
@@ -160,6 +165,9 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   maskDefaults: true,
   hide: [],
   hideDefaults: true,
+  locale: 'de-CH',
+  timezoneId: 'Europe/Zurich',
+  workers: 2,
   settle: {
     scroll: true,
     waitForImages: true,
@@ -260,5 +268,9 @@ export function validateConfig(config: VRTConfig): void {
         (config.threshold.maxDiffPixelRatio < 0 || config.threshold.maxDiffPixelRatio > 1)) {
       throw new Error('maxDiffPixelRatio must be between 0 and 1');
     }
+  }
+
+  if (config.workers !== undefined && (!Number.isInteger(config.workers) || config.workers < 1)) {
+    throw new Error('workers must be a positive integer');
   }
 }

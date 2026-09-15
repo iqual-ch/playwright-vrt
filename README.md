@@ -102,6 +102,8 @@ Full config example (includes URLs + advanced settings):
 | `blockHosts` | `[]` | Additional hosts to block during screenshots (`"host"` or `"*.domain"`). Merged with the built-in list (Cloudflare Turnstile, analytics, tag managers, consent CDNs, chat widgets). `blockDefaultHosts: false` disables the built-in list. |
 | `mask` | `[]` | Additional CSS selectors masked in the screenshot (geometry kept, content ignored). Merged with the built-in list (captchas, Google Maps / YouTube / Vimeo iframes, `<video>`). `maskDefaults: false` disables the built-in list. |
 | `hide` | `[]` | Additional CSS selectors removed with `display: none`. Merged with the built-in list (common cookie banners and chat widgets; see also `tests/vrt.css`). `hideDefaults: false` disables the built-in list. |
+| `locale` / `timezoneId` | `de-CH` / `Europe/Zurich` | Browser locale and timezone for both sides. |
+| `workers` | `2` | Parallel Playwright workers. |
 | `settle.scroll` | `true` | Scroll through the page once before the capture so lazy images and scroll-triggered effects fire identically on both sides. |
 | `settle.waitForImages` | `true` | Wait (max 10 s) until all `<img>` have loaded or failed. |
 

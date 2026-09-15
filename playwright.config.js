@@ -17,7 +17,7 @@ export default {
   testMatch: '**/*.spec.js', // JavaScript test files
   fullyParallel: true,
   retries: process.env.CI ? 2 : 1,
-  workers: 2,
+  workers: vrtConfig.workers || 2,
   // goto (45 s) + settle + toHaveScreenshot (30 s) must fit
   timeout: 120000,
 
@@ -47,6 +47,8 @@ export default {
     screenshot: 'on',
     ignoreHTTPSErrors: ignoreHTTPSErrors,
     // Headers are scoped to the hosts under test in tests/vrt.spec.js, not set here.
+    locale: vrtConfig.locale || 'de-CH',
+    timezoneId: vrtConfig.timezoneId || 'Europe/Zurich',
     launchOptions: {
       slowMo: 100,
     },
