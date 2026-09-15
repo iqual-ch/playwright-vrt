@@ -10,7 +10,8 @@ const vrtConfig = process.env.VRT_CONFIG
 // Use absolute paths based on user's working directory
 const workingDir = process.cwd();
 
-const ignoreHTTPSErrors = process.env.BASE_URL.endsWith("ddev.site") || process.env.BASE_URL.endsWith("localhost");
+const baseHost = new URL(process.env.BASE_URL).hostname;
+const ignoreHTTPSErrors = baseHost.endsWith('ddev.site') || baseHost === 'localhost' || baseHost.endsWith('.localhost');
 
 // 'baseline' writes every snapshot; 'test' never writes one, so a missing baseline fails.
 const phase = process.env.VRT_PHASE || 'test';
