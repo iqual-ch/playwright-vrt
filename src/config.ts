@@ -27,6 +27,12 @@ export interface VRTConfig {
   /** Hosts to block ("host" or "*.domain"), merged with the defaults unless blockDefaultHosts is false. */
   blockHosts?: string[];
   blockDefaultHosts?: boolean;
+  settle?: {
+    /** Scroll through the page once before the capture. */
+    scroll?: boolean;
+    /** Wait (bounded) until every <img> has loaded or failed. */
+    waitForImages?: boolean;
+  };
 }
 
 export interface CLIOptions {
@@ -100,6 +106,10 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   },
   blockHosts: [],
   blockDefaultHosts: true,
+  settle: {
+    scroll: true,
+    waitForImages: true,
+  },
 };
 
 /**
@@ -122,6 +132,10 @@ export function mergeConfig(config: Partial<VRTConfig>): VRTConfig {
     extraHTTPHeaders: {
       ...DEFAULT_CONFIG.extraHTTPHeaders,
       ...config.extraHTTPHeaders,
+    },
+    settle: {
+      ...DEFAULT_CONFIG.settle,
+      ...config.settle,
     },
   } as VRTConfig;
 

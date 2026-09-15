@@ -31,5 +31,9 @@
   "extraHTTPHeaders": {
     "Authorization": "Basic dXNlcjpwYXNz"
   },
-  "blockHosts": ["*.example-chat-widget.com"]
+  "blockHosts": ["*.example-chat-widget.com"],
+  "settle": {
+    "scroll": true,
+    "waitForImages": true
+  }
 }

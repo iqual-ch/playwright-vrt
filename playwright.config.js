@@ -18,7 +18,8 @@ export default {
   fullyParallel: true,
   retries: process.env.CI ? 2 : 1,
   workers: 2,
-  timeout: 60000,
+  // goto (45 s) + settle + toHaveScreenshot (30 s) must fit
+  timeout: 120000,
 
   // Store snapshots in playwright-snapshots/ for easy caching
   snapshotDir: join(workingDir, 'playwright-snapshots'),

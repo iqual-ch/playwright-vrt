@@ -29,6 +29,7 @@ const threshold = vrtConfig.threshold || {
   maxDiffPixelRatio: 0.01,
 };
 
+const settle = { scroll: true, waitForImages: true, ...(vrtConfig.settle || {}) };
 const blockHosts = (vrtConfig.blockHosts || []).map(hostPatternToRegExp);
 
 // Headers go to the hosts under test only; on third-party hosts they would fail the CORS preflight.
@@ -41,6 +42,9 @@ const ownHosts = new Set(
 
 const GOTO_TIMEOUT = 45_000;
 const NETWORK_IDLE_TIMEOUT = 10_000;
+const IMAGES_TIMEOUT = 10_000;
+const SCROLL_STEP_DELAY = 150;
+const MAX_SCROLL_STEPS = 80;
 
 test.beforeEach(async ({ page }) => {
   await page.route(() => true, async (route) => {
@@ -63,7 +67,7 @@ test.beforeEach(async ({ page }) => {
 
 // Create a test for each URL
 for (const url of urls) {
-  test(`VRT: ${url}`, async ({ page }) => {
+  test(`VRT: ${url}`, async ({ page }, testInfo) => {
     const pageUrl = new URL(url);
     const fullPath = pageUrl.pathname + pageUrl.search;
 
@@ -71,26 +75,68 @@ for (const url of urls) {
     await page.goto(fullPath, { waitUntil: 'load', timeout: GOTO_TIMEOUT });
     await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT }).catch(() => undefined);
 
-    // Wait for fonts to load
-    await page.evaluate(() => document.fonts.ready);
+    const viewport = testInfo.project.use.viewport || { width: 1920, height: 1080 };
+    await settlePage(page, viewport.height);
 
-    // Wait for animations to settle
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+    // Clip the full-page capture to the viewport width so an overflowing element cannot widen the image.
+    const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => viewport.height);
+    const clip = { x: 0, y: 0, width: viewport.width, height: Math.max(viewport.height, pageHeight) };
 
-    // Additional stability wait for lazy-loaded content
-    await page.waitForTimeout(500);
-
-    // Take full page screenshot and compare
-    await expect(page).toHaveScreenshot({
+    const screenshotOptions = {
       fullPage: true,
+      animations: 'disabled',
+      stylePath,
+      timeout: 30_000,
       maxDiffPixels: threshold.maxDiffPixels,
       maxDiffPixelRatio: threshold.maxDiffPixelRatio,
-      animations: 'disabled',
-      stylePath: stylePath,
-      timeout: 30000
-    });
+    };
+
+    try {
+      await expect(page).toHaveScreenshot({ ...screenshotOptions, clip });
+    } catch (error) {
+      // The page shrank after measuring; capture without the clip instead.
+      if (!/clip/i.test(String(error && error.message))) throw error;
+      await expect(page).toHaveScreenshot(screenshotOptions);
+    }
   });
 }
+
+// Scroll through the page so lazy images and scroll-triggered reveals fire, then wait for images and fonts.
+async function settlePage(page, viewportHeight) {
+  if (settle.scroll) {
+    const totalHeight = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => 0);
+    const step = Math.max(200, Math.floor(viewportHeight * 0.8));
+    for (let y = step, i = 0; y < totalHeight && i < MAX_SCROLL_STEPS; y += step, i++) {
+      await page.evaluate((top) => window.scrollTo({ top, left: 0, behavior: 'instant' }), y).catch(() => undefined);
+      await page.waitForTimeout(SCROLL_STEP_DELAY);
+    }
+    await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })).catch(() => undefined);
+  }
+
+  if (settle.waitForImages) {
+    await Promise.race([
+      page.evaluate(waitForImages).catch(() => undefined),
+      page.waitForTimeout(IMAGES_TIMEOUT),
+    ]);
+  }
+
+  // Wait for fonts to load
+  await page.evaluate(() => document.fonts.ready).catch(() => undefined);
+
+  // Let the layout settle after the scroll
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForTimeout(500);
+}
+
+/** Runs in the browser: resolve once every <img> has loaded or failed. */
+function waitForImages() {
+  const pending = Array.from(document.images).filter((img) => !img.complete);
+  return Promise.all(pending.map((img) => new Promise((resolve) => {
+    img.addEventListener('load', resolve, { once: true });
+    img.addEventListener('error', resolve, { once: true });
+  })));
+}
+
 
 /** "*.example.com" matches example.com and any subdomain; plain hosts match exactly. */
 function hostPatternToRegExp(pattern) {
