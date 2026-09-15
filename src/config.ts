@@ -58,29 +58,35 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   extraHTTPHeaders: {},
 };
 
+/**
+ * Merge defaults with the user's config. Lists are resolved here so the test
+ * runner receives the final values and the config hash covers them.
+ */
+export function mergeConfig(config: Partial<VRTConfig>): VRTConfig {
+  return {
+    ...DEFAULT_CONFIG,
+    ...config,
+    crawlOptions: {
+      ...DEFAULT_CONFIG.crawlOptions,
+      ...config.crawlOptions,
+    },
+    viewports: config.viewports || DEFAULT_CONFIG.viewports,
+    threshold: {
+      ...DEFAULT_CONFIG.threshold,
+      ...config.threshold,
+    },
+    extraHTTPHeaders: {
+      ...DEFAULT_CONFIG.extraHTTPHeaders,
+      ...config.extraHTTPHeaders,
+    },
+  } as VRTConfig;
+}
+
 export async function loadConfig(configPath: string): Promise<VRTConfig> {
   try {
     const raw = fs.readFileSync(configPath, 'utf-8');
     const config = JSON.parse(raw);
-
-    // Merge with defaults
-    return {
-      ...DEFAULT_CONFIG,
-      ...config,
-      crawlOptions: {
-        ...DEFAULT_CONFIG.crawlOptions,
-        ...config.crawlOptions,
-      },
-      viewports: config.viewports || DEFAULT_CONFIG.viewports,
-      threshold: {
-        ...DEFAULT_CONFIG.threshold,
-        ...config.threshold,
-      },
-      extraHTTPHeaders: {
-        ...DEFAULT_CONFIG.extraHTTPHeaders,
-        ...config.extraHTTPHeaders,
-      },
-    };
+    return mergeConfig(config);
   } catch (error) {
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       throw new Error(`Config file not found: ${configPath}`);

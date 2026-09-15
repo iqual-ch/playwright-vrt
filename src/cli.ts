@@ -3,9 +3,9 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
-import { loadConfig, validateConfig, type CLIOptions } from './config.js';
+import { loadConfig, mergeConfig, validateConfig, type CLIOptions, type VRTConfig } from './config.js';
 import { collectURLs } from './collect.js';
-import { runVisualTests, printResults, hasExistingSnapshots } from './runner.js';
+import { runVisualTests, printResults } from './runner.js';
 import { ensureBrowserInstalled } from './browser.js';
 import { createHash } from 'crypto';
 
@@ -21,12 +21,24 @@ function computeFileHash(filePath: string): string {
 }
 
 /**
- * Compute SHA-256 hash of a config object
+ * JSON with recursively sorted object keys, so equal configs hash equally.
+ */
+function stableStringify(value: any): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map(k => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * Compute SHA-256 hash of a config object (all nesting levels)
  */
 function computeConfigHash(config: any): string {
-  // Create a stable JSON representation (sorted keys)
-  const configStr = JSON.stringify(config, Object.keys(config).sort());
-  return createHash('sha256').update(configStr).digest('hex');
+  return createHash('sha256').update(stableStringify(config)).digest('hex');
 }
 
 /**
@@ -88,7 +100,7 @@ async function main() {
 
   try {
     // Load and validate configuration
-    let config;
+    let config: VRTConfig;
     let configPath: string | undefined;
 
     if (args.config) {
@@ -97,8 +109,7 @@ async function main() {
       config = await loadConfig(configPath);
     } else {
       // Use defaults
-      const { DEFAULT_CONFIG } = await import('./config.js');
-      config = { ...DEFAULT_CONFIG } as any;
+      config = mergeConfig({});
     }
 
     // Override with CLI args
