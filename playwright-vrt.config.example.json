@@ -2,10 +2,10 @@
   "referenceUrl": "https://production.example.com",
   "testUrl": "https://preview.example.com",
   "sitemapPath": "/sitemap.xml",
-  "maxUrls": 2,
+  "maxUrls": 25,
   "exclude": [
-    "*/admin/*",
-    "*/user/*"
+    "**/admin/**",
+    "**/user/**"
   ],
   "include": [],
   "crawlOptions": {
