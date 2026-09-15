@@ -16,11 +16,24 @@ const REFERENCE_PROBE = { timeout: 60_000, concurrency: 4 };
 /** Test host: sequential, so a cold site renders every page once before the timed run. */
 const TEST_PROBE = { timeout: 60_000, concurrency: 1 };
 
+export interface TestOutcome {
+  url: string;
+  project: string;
+  status: 'passed' | 'failed' | 'flaky' | 'skipped';
+  /** Error message of the last attempt. */
+  message?: string;
+  /** Set when the failure is a missing baseline; holds the baseline capture error. */
+  noBaseline?: string;
+}
+
 export interface TestResults {
   passed: number;
   failed: number;
+  flaky: number;
+  skipped: number;
   total: number;
   exitCode: number;
+  outcomes: TestOutcome[];
 }
 
 export interface RunnerOptions {
@@ -104,18 +117,49 @@ export async function runVisualTests(options: RunnerOptions): Promise<TestResult
     console.log(`   Source: ${config.referenceUrl}`);
 
     // Step 2: Create baseline screenshots
+    for (const entry of plan.entries) {
+      delete entry.baselineFailed;
+    }
+    writePlan(planPath, plan);
+
     await runPlaywright({
       configPath: playwrightConfigPath,
       baseURL: config.referenceUrl,
       vrtConfig: config,
       outputDir,
-      updateSnapshots: true,
+      phase: 'baseline',
       verbose: true,
       project,
       headed,
     });
 
-    console.log('✓ Baseline created');
+    const baselineOutcomes = parsePlaywrightResults(outputDir);
+    let failedBaselines = 0;
+    for (const outcome of baselineOutcomes) {
+      if (outcome.status !== 'failed') continue;
+      const entry = plan.entries.find(e => e.url === outcome.url);
+      if (!entry) continue;
+      entry.baselineFailed = { ...entry.baselineFailed, [outcome.project]: outcome.message || 'baseline capture failed' };
+      failedBaselines++;
+    }
+    writePlan(planPath, plan);
+
+    if (failedBaselines > 0) {
+      console.log(`\n⚠️  ${failedBaselines} baseline screenshot(s) could not be captured on ${config.referenceUrl}:`);
+      for (const outcome of baselineOutcomes) {
+        if (outcome.status === 'failed') {
+          console.log(`   - ${outcome.url} [${outcome.project}]: ${outcome.message}`);
+        }
+      }
+      console.log('   These URLs have no baseline and fail in the test phase.');
+
+      const attempted = baselineOutcomes.filter(o => o.status !== 'skipped').length;
+      if (attempted > 0 && failedBaselines === attempted) {
+        throw new Error(`Baseline could not be created for any URL on ${config.referenceUrl}. Reference host unreachable or every page unstable.`);
+      }
+    } else {
+      console.log('✓ Baseline created');
+    }
   }
 
   console.log(`\n🧪 Testing ${config.testUrl}`);
@@ -126,14 +170,13 @@ export async function runVisualTests(options: RunnerOptions): Promise<TestResult
     baseURL: config.testUrl,
     vrtConfig: config,
     outputDir,
-    updateSnapshots: false,
+    phase: 'test',
     verbose: true,
     project,
     headed,
   });
 
-  // Parse results
-  const results = await parseResults(outputDir);
+  const results = summarize(parsePlaywrightResults(outputDir), plan);
   results.exitCode = exitCode;
 
   return results;
@@ -210,7 +253,7 @@ interface PlaywrightRunOptions {
   baseURL: string;
   vrtConfig: VRTConfig;
   outputDir: string;
-  updateSnapshots: boolean;
+  phase: 'baseline' | 'test';
   verbose?: boolean;
   project?: string;
   headed?: boolean;
@@ -224,10 +267,6 @@ async function runPlaywright(options: PlaywrightRunOptions): Promise<number> {
       '--config', options.configPath
     ];
 
-    if (options.updateSnapshots) {
-      args.push('--update-snapshots');
-    }
-
     if (options.project) {
       args.push('--project', options.project);
     }
@@ -240,6 +279,7 @@ async function runPlaywright(options: PlaywrightRunOptions): Promise<number> {
       ...process.env,
       BASE_URL: options.baseURL,
       VRT_CONFIG: JSON.stringify(options.vrtConfig),
+      VRT_PHASE: options.phase,
       OUTPUT_DIR: options.outputDir,
     };
 
@@ -248,78 +288,120 @@ async function runPlaywright(options: PlaywrightRunOptions): Promise<number> {
       stdio: options.verbose ? 'inherit' : 'pipe',
       shell: false,
       cwd: process.cwd(),
-    });    let stdout = '';
+    });
+
     let stderr = '';
 
     if (!options.verbose) {
-      proc.stdout?.on('data', (data) => {
-        stdout += data.toString();
-      });
+      proc.stdout?.on('data', () => undefined);
       proc.stderr?.on('data', (data) => {
         stderr += data.toString();
       });
     }
 
     proc.on('close', (code) => {
-      const exitCode = code || 0;
-
-      // For baseline creation (update-snapshots), always succeed
-      if (options.updateSnapshots) {
-        resolve(0);
-      } else {
-        // For actual tests, return the exit code
-        resolve(exitCode);
-      }
+      resolve(code || 0);
     });
 
     proc.on('error', (error) => {
-      reject(new Error(`Failed to run Playwright: ${error.message}`));
+      reject(new Error(`Failed to run Playwright: ${error.message}${stderr ? `\n${stderr}` : ''}`));
     });
   });
 }
 
-async function parseResults(outputDir: string): Promise<TestResults> {
+/** Read Playwright's JSON report and return one outcome per (URL, project). */
+export function parsePlaywrightResults(outputDir: string): TestOutcome[] {
   const resultsPath = path.join(outputDir, 'results.json');
+  const outcomes: TestOutcome[] = [];
 
+  let report: any;
   try {
-    const raw = fs.readFileSync(resultsPath, 'utf-8');
-    const results = JSON.parse(raw);
+    report = JSON.parse(fs.readFileSync(resultsPath, 'utf-8'));
+  } catch {
+    return outcomes;
+  }
 
-    let passed = 0;
-    let failed = 0;
-    let total = 0;
+  const visit = (suite: any) => {
+    for (const spec of suite.specs || []) {
+      const url = String(spec.title || '').replace(/^VRT: /, '');
+      for (const test of spec.tests || []) {
+        const project = test.projectName || test.projectId || 'default';
+        const attempts: any[] = test.results || [];
+        const last = attempts[attempts.length - 1];
+        let status: TestOutcome['status'];
+        let message: string | undefined;
 
-    // Parse Playwright JSON results
-    if (results.suites) {
-      for (const suite of results.suites) {
-        if (suite.specs) {
-          for (const spec of suite.specs) {
-            total++;
-            if (spec.ok) {
-              passed++;
-            } else {
-              failed++;
-            }
-          }
+        switch (test.status) {
+          case 'expected':
+            status = 'passed';
+            break;
+          case 'flaky':
+            status = 'flaky';
+            break;
+          case 'skipped':
+            status = 'skipped';
+            break;
+          default:
+            status = 'failed';
+            message = firstLine(stripAnsi(last?.error?.message || last?.errors?.[0]?.message || 'failed'));
         }
+
+        outcomes.push({ url, project, status, message });
       }
     }
+    for (const child of suite.suites || []) {
+      visit(child);
+    }
+  };
 
-    return { passed, failed, total, exitCode: 0 };
-  } catch {
-    return { passed: 0, failed: 0, total: 0, exitCode: 1 };
+  for (const suite of report.suites || []) {
+    visit(suite);
   }
+
+  return outcomes;
+}
+
+function summarize(outcomes: TestOutcome[], plan: Plan): TestResults {
+  const results: TestResults = { passed: 0, failed: 0, flaky: 0, skipped: 0, total: outcomes.length, exitCode: 0, outcomes };
+  const byUrl = new Map(plan.entries.map(e => [e.url, e]));
+  for (const o of outcomes) {
+    if (o.status === 'passed') results.passed++;
+    else if (o.status === 'flaky') { results.passed++; results.flaky++; }
+    else if (o.status === 'skipped') results.skipped++;
+    else {
+      results.failed++;
+      const reason = byUrl.get(o.url)?.baselineFailed?.[o.project];
+      if (reason) o.noBaseline = reason;
+    }
+  }
+  return results;
 }
 
 export function printResults(results: TestResults, config: VRTConfig): void {
   console.log('\n📊 Test Results:');
-  console.log(`   Total: ${results.total}`);
-  console.log(`   Passed: ${results.passed}`);
+  console.log(`   Total:  ${results.total}`);
+  console.log(`   Passed: ${results.passed}${results.flaky ? ` (${results.flaky} flaky)` : ''}`);
   console.log(`   Failed: ${results.failed}`);
 
+  const noBaseline = results.outcomes.filter(o => o.noBaseline);
+  if (noBaseline.length > 0) {
+    console.log('\n⚠️  Failed without a baseline (reference capture failed):');
+    for (const o of noBaseline) {
+      console.log(`   - ${o.url} [${o.project}]: ${o.noBaseline}`);
+    }
+  }
+
   if (results.failed > 0) {
-    console.log(`\n❌ ${results.failed} visual difference(s) detected`);
+    console.log(`\n❌ ${results.failed} test(s) failed`);
   } else if (results.total > 0) {
     console.log('\n✅ All visual tests passed');
   }
+}
+
+function stripAnsi(text: string): string {
+  return text.replace(/\[[0-9;]*m/g, '');
+}
+
+function firstLine(text: string): string {
+  return text.split('\n').map(l => l.trim()).filter(Boolean)[0] || text;
 }

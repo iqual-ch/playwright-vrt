@@ -213,7 +213,7 @@ This project provides a composite GitHub Action for easy integration. It handles
 1. **Collect URLs** - Parse sitemap or crawl site (cached after first run)
 2. **Filter & limit** - Apply include/exclude patterns, limit to maxUrls
 3. **Pre-flight** - One request per URL on both hosts (warm-up, redirects, status log)
-4. **Create baseline** - Screenshot all URLs from `referenceUrl` (cached after first run)
+4. **Create baseline** - Screenshot all URLs from `referenceUrl` (cached after first run). URLs whose reference screenshot fails (timeout, unstable page, HTTP error) are listed with the reason and fail in the test phase as "no baseline"; the test phase never writes a baseline, so a test screenshot can't become the golden.
 5. **Run tests** - Screenshot all URLs from `testUrl` and compare. Before each capture the page is scrolled through once, images and fonts are awaited, third-party hosts from `blockHosts` are blocked, and `mask`/`hide` selectors are applied.
 6. **Generate report** - Create Playwright HTML report with diffs
 
@@ -222,8 +222,8 @@ All URLs and baseline snapshots are cached in `playwright-snapshots/` to minimiz
 ## Exit Codes
 
 - `0` - All tests passed
-- `1` - Visual differences detected
-- `2` - Configuration or runtime error
+- `1` - Visual differences detected, or URLs without a baseline from the reference host
+- `2` - Configuration or runtime error, or no baseline could be created at all
 
 ## Requirements
 

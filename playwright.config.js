@@ -12,6 +12,9 @@ const workingDir = process.cwd();
 
 const ignoreHTTPSErrors = process.env.BASE_URL.endsWith("ddev.site") || process.env.BASE_URL.endsWith("localhost");
 
+// 'baseline' writes every snapshot; 'test' never writes one, so a missing baseline fails.
+const phase = process.env.VRT_PHASE || 'test';
+
 export default {
   testDir: './tests',
   testMatch: '**/*.spec.js', // JavaScript test files
@@ -20,6 +23,8 @@ export default {
   workers: vrtConfig.workers || 2,
   // goto (45 s) + settle + toHaveScreenshot (30 s) must fit
   timeout: 120000,
+
+  updateSnapshots: phase === 'baseline' ? 'all' : 'none',
 
   // Store snapshots in playwright-snapshots/ for easy caching
   snapshotDir: join(workingDir, 'playwright-snapshots'),

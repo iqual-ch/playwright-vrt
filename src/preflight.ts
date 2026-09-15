@@ -24,6 +24,8 @@ export interface PlanEntry {
   test?: HostProbe;
   /** Informational pre-flight findings; the URL is still tested. */
   notes?: string[];
+  /** Error of the failed baseline capture, per Playwright project (viewport). */
+  baselineFailed?: Record<string, string>;
 }
 
 export interface Plan {
@@ -128,6 +130,7 @@ export function buildPlan(
       path: requestedPath,
       reference,
       test,
+      baselineFailed: prev?.baselineFailed,
     };
     const notes: string[] = [];
 

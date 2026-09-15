@@ -357,6 +357,11 @@ Directories:
 
   Clean with: playwright-vrt run --clean
   Or manually: rm -rf playwright-snapshots playwright-report playwright-tmp
+
+Exit codes:
+  0  all tests passed
+  1  visual differences or missing baselines
+  2  configuration/runtime error, or no baseline could be created at all
 `);
 }
 
