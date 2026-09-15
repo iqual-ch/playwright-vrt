@@ -14,6 +14,7 @@ export const FIXTURE_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)
  * @param {string[]} options.sitemap                 paths listed in /sitemap.xml (for this server's own origin)
  * @param {Record<string, string>} [options.redirects] path -> Location of a 302
  * @param {string[]} [options.destroy]               paths whose socket is destroyed without a response
+ * @param {string[]} [options.challenge]             paths answered with a 403 Cloudflare challenge page
  * @param {Record<string, string>} [options.overrides] path -> fixture file served instead of pages[path]
  * @param {string} [options.fixtureDir]
  */
@@ -23,6 +24,7 @@ export async function startSite(options) {
     sitemap,
     redirects = {},
     destroy = [],
+    challenge = [],
     overrides = {},
     fixtureDir = FIXTURE_DIR,
   } = options;
@@ -38,6 +40,12 @@ export async function startSite(options) {
 
     if (destroy.includes(pathname)) {
       req.socket.destroy();
+      return;
+    }
+
+    if (challenge.includes(pathname)) {
+      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8', 'cf-mitigated': 'challenge', 'Cache-Control': 'no-store' });
+      res.end('<!doctype html><html><body><h1>Just a moment...</h1></body></html>');
       return;
     }
 
