@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { hostPatternToRegExp } from './host-pattern.js';
 
 // ESM equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -150,14 +151,4 @@ function waitForImages() {
     img.addEventListener('load', resolve, { once: true });
     img.addEventListener('error', resolve, { once: true });
   })));
-}
-
-/** "*.example.com" matches example.com and any subdomain; plain hosts match exactly. */
-function hostPatternToRegExp(pattern) {
-  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
-  if (escaped.startsWith('\\*\\.')) {
-    const base = escaped.slice(4);
-    return new RegExp(`^(?:.+\\.)?${base}$`, 'i');
-  }
-  return new RegExp(`^${escaped.replace(/\*/g, '.*')}$`, 'i');
 }
