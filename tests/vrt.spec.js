@@ -20,6 +20,7 @@ const vrtConfig = process.env.VRT_CONFIG
   ? JSON.parse(process.env.VRT_CONFIG)
   : {};
 
+
 // The plan is written by the CLI: one entry per URL with the path to navigate to.
 function loadPlan() {
   if (existsSync(planPath)) {
@@ -37,7 +38,6 @@ function loadPlan() {
 const entries = loadPlan();
 
 const threshold = vrtConfig.threshold || { maxDiffPixels: 500 };
-
 const settle = { scroll: true, waitForImages: true, ...(vrtConfig.settle || {}) };
 const maskSelectors = vrtConfig.mask || [];
 const hideSelectors = vrtConfig.hide || [];
@@ -151,7 +151,6 @@ function waitForImages() {
     img.addEventListener('error', resolve, { once: true });
   })));
 }
-
 
 /** "*.example.com" matches example.com and any subdomain; plain hosts match exactly. */
 function hostPatternToRegExp(pattern) {

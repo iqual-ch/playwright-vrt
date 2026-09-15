@@ -233,7 +233,6 @@ async function main() {
       console.log(`📁 Snapshots: ${snapshotDir}`);
     }
 
-    // Exit with appropriate code
     process.exit(results.failed > 0 ? 1 : 0);
   } catch (error) {
     console.error('\n❌ Error:', error instanceof Error ? error.message : error);
