@@ -35,6 +35,10 @@ inputs:
     description: 'Working directory for the VRT run'
     required: false
     default: '.'
+  summary-retention-days:
+    description: 'Retention (days) of the small summary artifact (summary.md, results.json, plan.json)'
+    required: false
+    default: '90'
 
 outputs:
   result:
@@ -65,11 +69,20 @@ runs:
 
         echo "Running: npx @iqual/playwright-vrt $ARGS"
 
-        if npx @iqual/playwright-vrt $ARGS; then
+        set +e
+        npx @iqual/playwright-vrt $ARGS
+        EXIT_CODE=$?
+        set -e
+
+        if [ -f playwright-report/summary.md ]; then
+          cat playwright-report/summary.md >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+        if [ "$EXIT_CODE" -eq 0 ]; then
           echo "result=passed" >> "$GITHUB_OUTPUT"
         else
           echo "result=failed" >> "$GITHUB_OUTPUT"
-          exit 1
+          exit $EXIT_CODE
         fi
 
     - name: Upload VRT report
@@ -78,3 +91,17 @@ runs:
       with:
         name: ${{ inputs.report-name }}
         path: ${{ inputs.working-directory }}/playwright-report/
+
+    # Small, long-lived artifact for post-mortems (the full report expires with the org retention)
+    - name: Upload VRT summary
+      if: always() && inputs.upload-report == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.report-name }}-summary
+        retention-days: ${{ inputs.summary-retention-days }}
+        if-no-files-found: ignore
+        path: |
+          ${{ inputs.working-directory }}/playwright-report/summary.md
+          ${{ inputs.working-directory }}/playwright-report/summary.json
+          ${{ inputs.working-directory }}/playwright-report/results.json
+          ${{ inputs.working-directory }}/playwright-snapshots/plan.json

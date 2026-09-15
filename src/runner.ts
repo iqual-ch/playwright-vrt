@@ -179,6 +179,8 @@ export async function runVisualTests(options: RunnerOptions): Promise<TestResult
   const results = summarize(parsePlaywrightResults(outputDir), plan);
   results.exitCode = exitCode;
 
+  writeSummary(outputDir, config, results);
+
   return results;
 }
 
@@ -375,6 +377,49 @@ function summarize(outcomes: TestOutcome[], plan: Plan): TestResults {
     }
   }
   return results;
+}
+
+function writeSummary(outputDir: string, config: VRTConfig, results: TestResults): void {
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  const failed = results.outcomes.filter(o => o.status === 'failed' && !o.noBaseline);
+  const noBaseline = results.outcomes.filter(o => o.status === 'failed' && o.noBaseline);
+  const flaky = results.outcomes.filter(o => o.status === 'flaky');
+
+  const lines: string[] = [];
+  lines.push('## Visual Regression Test summary');
+  lines.push('');
+  lines.push(`Reference: ${config.referenceUrl}  `);
+  lines.push(`Test: ${config.testUrl}`);
+  lines.push('');
+  lines.push('| Passed | Failed | Total |');
+  lines.push('|---:|---:|---:|');
+  lines.push(`| ${results.passed}${results.flaky ? ` (${results.flaky} flaky)` : ''} | ${results.failed} | ${results.total} |`);
+  if (failed.length > 0) {
+    lines.push('', '### Visual differences', '');
+    for (const o of failed) lines.push(`- ${o.url} [${o.project}]: ${o.message || ''}`);
+  }
+  if (noBaseline.length > 0) {
+    lines.push('', '### No baseline from the reference host', '');
+    for (const o of noBaseline) lines.push(`- ${o.url} [${o.project}]: ${o.noBaseline}`);
+  }
+  if (flaky.length > 0) {
+    lines.push('', '### Flaky (passed on retry)', '');
+    for (const o of flaky) lines.push(`- ${o.url} [${o.project}]`);
+  }
+  lines.push('');
+
+  fs.writeFileSync(path.join(outputDir, 'summary.md'), lines.join('\n'), 'utf-8');
+  fs.writeFileSync(path.join(outputDir, 'summary.json'), JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    referenceUrl: config.referenceUrl,
+    testUrl: config.testUrl,
+    passed: results.passed,
+    failed: results.failed,
+    flaky: results.flaky,
+    total: results.total,
+    outcomes: results.outcomes,
+  }, null, 2), 'utf-8');
 }
 
 export function printResults(results: TestResults, config: VRTConfig): void {

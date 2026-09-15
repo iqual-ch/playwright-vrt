@@ -227,6 +227,7 @@ async function main() {
     // Report location
     const reportPath = path.join(outputDir, 'index.html');
     console.log(`\n📊 Report: ${reportPath}`);
+    console.log(`📄 Summary: ${path.join(outputDir, 'summary.md')}`);
 
     if (args.verbose) {
       console.log(`📁 Snapshots: ${snapshotDir}`);

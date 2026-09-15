@@ -207,6 +207,9 @@ This project provides a composite GitHub Action for easy integration. It handles
 | `upload-report` | Upload Playwright HTML report as artifact | No | `true` |
 | `report-name` | Name of the uploaded report artifact | No | `vrt-report` |
 | `working-directory` | Working directory for the VRT run | No | `.` |
+| `summary-retention-days` | Retention of the small `<report-name>-summary` artifact (`summary.md`, `summary.json`, `results.json`, `plan.json`) | No | `90` |
+
+The action appends `summary.md` to the GitHub step summary and uploads it as a separate, long-lived artifact so post-mortems survive the retention period of the full report.
 
 ## How It Works
 
@@ -215,7 +218,7 @@ This project provides a composite GitHub Action for easy integration. It handles
 3. **Pre-flight** - One request per URL on both hosts (warm-up, redirects, status log)
 4. **Create baseline** - Screenshot all URLs from `referenceUrl` (cached after first run). URLs whose reference screenshot fails (timeout, unstable page, HTTP error) are listed with the reason and fail in the test phase as "no baseline"; the test phase never writes a baseline, so a test screenshot can't become the golden.
 5. **Run tests** - Screenshot all URLs from `testUrl` and compare. Before each capture the page is scrolled through once, images and fonts are awaited, third-party hosts from `blockHosts` are blocked, and `mask`/`hide` selectors are applied.
-6. **Generate report** - Create Playwright HTML report with diffs
+6. **Generate report** - Playwright HTML report with diffs, plus `summary.md` / `summary.json` (visual differences and missing baselines with reasons) in the output directory.
 
 All URLs and baseline snapshots are cached in `playwright-snapshots/` to minimize load on your production system.
 
