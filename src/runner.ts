@@ -345,7 +345,7 @@ export function parsePlaywrightResults(outputDir: string): TestOutcome[] {
             break;
           default:
             status = 'failed';
-            message = firstLine(stripAnsi(last?.error?.message || last?.errors?.[0]?.message || 'failed'));
+            message = describeFailure(last?.error?.message || last?.errors?.[0]?.message || 'failed');
         }
 
         outcomes.push({ url, project, status, message });
@@ -445,6 +445,17 @@ export function printResults(results: TestResults, config: VRTConfig): void {
 
 function stripAnsi(text: string): string {
   return text.replace(/\[[0-9;]*m/g, '');
+}
+
+/** Screenshot failures are summarised by their size mismatch and pixel count; anything else by its first line. */
+function describeFailure(message: string): string {
+  const text = stripAnsi(message);
+  const size = text.match(/Expected an image \d+px by \d+px, received \d+px by \d+px\./);
+  const pixels = text.match(/(\d+) pixels \(ratio ([\d.]+) of all image pixels\) are different/);
+  if (size || pixels) {
+    return [size?.[0], pixels ? `${pixels[1]} pixels differ (ratio ${pixels[2]})` : undefined].filter(Boolean).join(' ');
+  }
+  return firstLine(text).replace(/^Error: /, '');
 }
 
 function firstLine(text: string): string {

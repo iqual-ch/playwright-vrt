@@ -99,6 +99,7 @@ test('B: a page that renders differently on the test host fails with a visual di
 
   const summaryMd = fs.readFileSync(path.join(cwd, 'playwright-report', 'summary.md'), 'utf-8');
   assert.match(summaryMd, /### Visual differences/, `summary.md:\n${summaryMd}`);
+  assert.match(summaryMd, /\d+ pixels differ \(ratio [\d.]+\)/, `summary.md carries the pixel count:\n${summaryMd}`);
   assert.ok(summaryMd.includes(changedUrl), `summary.md names ${changedUrl}:\n${summaryMd}`);
   assert.doesNotMatch(summaryMd, /### No baseline from the reference host/, `summary.md:\n${summaryMd}`);
   assert.match(summaryMd, /\| 2 \| 1 \| 3 \|/, `summary.md:\n${summaryMd}`);

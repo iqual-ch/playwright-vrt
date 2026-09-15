@@ -89,3 +89,38 @@ test('parsePlaywrightResults returns an empty array when results.json is missing
   const outcomes = parsePlaywrightResults(outputDir);
   assert.deepEqual(outcomes, []);
 });
+
+test('parsePlaywrightResults reports the differing pixel count or the size mismatch of a screenshot failure', () => {
+  const outputDir = tmpDir();
+  const screenshotError = [
+    'Error: expect(page).toHaveScreenshot(expected) failed',
+    '',
+    '  4200 pixels (ratio 0.01 of all image pixels) are different.',
+    '',
+    'Call log:',
+    '  - Expect "toHaveScreenshot" with timeout 30000ms',
+  ].join('\n');
+  const sizeError = [
+    'Error: expect(page).toHaveScreenshot(expected) failed',
+    '',
+    '  Expected an image 1920px by 5000px, received 1920px by 5100px. 12 pixels (ratio 0.01 of all image pixels) are different.',
+  ].join('\n');
+  writeResults(outputDir, {
+    suites: [{
+      specs: [
+        {
+          title: 'VRT: https://x/pixels',
+          tests: [{ projectName: 'desktop', status: 'unexpected', results: [{ status: 'failed', error: { message: screenshotError } }] }],
+        },
+        {
+          title: 'VRT: https://x/size',
+          tests: [{ projectName: 'desktop', status: 'unexpected', results: [{ status: 'failed', error: { message: sizeError } }] }],
+        },
+      ],
+    }],
+  });
+
+  const outcomes = parsePlaywrightResults(outputDir);
+  assert.equal(outcomes.find(o => o.url === 'https://x/pixels')?.message, '4200 pixels differ (ratio 0.01)');
+  assert.equal(outcomes.find(o => o.url === 'https://x/size')?.message, 'Expected an image 1920px by 5000px, received 1920px by 5100px. 12 pixels differ (ratio 0.01)');
+});
