@@ -3,7 +3,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
-import { loadConfig, mergeConfig, validateConfig, type CLIOptions, type VRTConfig } from './config.js';
+import { loadConfig, mergeConfig, validateConfig, computeConfigHash, type CLIOptions, type VRTConfig } from './config.js';
 import { collectURLs } from './collect.js';
 import { runVisualTests, printResults } from './runner.js';
 import { ensureBrowserInstalled } from './browser.js';
@@ -18,27 +18,6 @@ const __dirname = path.dirname(__filename);
 function computeFileHash(filePath: string): string {
   const content = fs.readFileSync(filePath, 'utf-8');
   return createHash('sha256').update(content).digest('hex');
-}
-
-/**
- * JSON with recursively sorted object keys, so equal configs hash equally.
- */
-function stableStringify(value: any): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(',')}]`;
-  }
-  if (value && typeof value === 'object') {
-    const keys = Object.keys(value).sort();
-    return `{${keys.map(k => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
-  }
-  return JSON.stringify(value);
-}
-
-/**
- * Compute SHA-256 hash of a config object (all nesting levels)
- */
-function computeConfigHash(config: any): string {
-  return createHash('sha256').update(stableStringify(config)).digest('hex');
 }
 
 /**

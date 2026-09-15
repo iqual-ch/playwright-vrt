@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import * as fs from 'fs';
+import { createHash } from 'crypto';
 
 export interface VRTConfig {
   referenceUrl: string;
@@ -240,6 +241,27 @@ export async function loadConfig(configPath: string): Promise<VRTConfig> {
     }
     throw error;
   }
+}
+
+/**
+ * JSON with recursively sorted object keys, so equal configs hash equally.
+ */
+function stableStringify(value: any): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map(k => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * Compute SHA-256 hash of a config object (all nesting levels)
+ */
+export function computeConfigHash(config: any): string {
+  return createHash('sha256').update(stableStringify(config)).digest('hex');
 }
 
 export function validateConfig(config: VRTConfig): void {
