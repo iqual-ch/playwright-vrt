@@ -30,6 +30,8 @@ const threshold = vrtConfig.threshold || {
 };
 
 const settle = { scroll: true, waitForImages: true, ...(vrtConfig.settle || {}) };
+const maskSelectors = vrtConfig.mask || [];
+const hideSelectors = vrtConfig.hide || [];
 const blockHosts = (vrtConfig.blockHosts || []).map(hostPatternToRegExp);
 
 // Headers go to the hosts under test only; on third-party hosts they would fail the CORS preflight.
@@ -75,6 +77,10 @@ for (const url of urls) {
     await page.goto(fullPath, { waitUntil: 'load', timeout: GOTO_TIMEOUT });
     await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT }).catch(() => undefined);
 
+    if (hideSelectors.length > 0) {
+      await page.addStyleTag({ content: `${hideSelectors.join(', ')} { display: none !important; }` });
+    }
+
     const viewport = testInfo.project.use.viewport || { width: 1920, height: 1080 };
     await settlePage(page, viewport.height);
 
@@ -87,6 +93,8 @@ for (const url of urls) {
       animations: 'disabled',
       stylePath,
       timeout: 30_000,
+      mask: maskSelectors.map((selector) => page.locator(selector)),
+      maskColor: '#FF00FF',
       maxDiffPixels: threshold.maxDiffPixels,
       maxDiffPixelRatio: threshold.maxDiffPixelRatio,
     };

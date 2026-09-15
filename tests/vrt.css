@@ -5,9 +5,13 @@
   transition-delay: 0s !important;
   scroll-behavior: auto !important;
 }
+/* Cookie banners push the body down while open */
+body.eu-cookie-compliance-popup-open {
+  padding-bottom: 0 !important;
+}
 #drupal-live-announce {
   display: none !important;
 }
-#cookiebanner, #usercentrics-root, #CybotCookiebotDialog, #klaro, .cc-window, .cc-compliance {
+#cookiebanner, #usercentrics-root, #CybotCookiebotDialog, .cookiebot-page-overlay, #klaro, .cc-window, .cc-compliance {
   display: none !important;
 }

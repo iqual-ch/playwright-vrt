@@ -27,6 +27,12 @@ export interface VRTConfig {
   /** Hosts to block ("host" or "*.domain"), merged with the defaults unless blockDefaultHosts is false. */
   blockHosts?: string[];
   blockDefaultHosts?: boolean;
+  /** Selectors to mask (geometry kept), merged with the defaults unless maskDefaults is false. */
+  mask?: string[];
+  maskDefaults?: boolean;
+  /** Selectors to hide (display: none), merged with the defaults unless hideDefaults is false. */
+  hide?: string[];
+  hideDefaults?: boolean;
   settle?: {
     /** Scroll through the page once before the capture. */
     scroll?: boolean;
@@ -85,6 +91,50 @@ export const DEFAULT_BLOCK_HOSTS: string[] = [
   '*.crisp.chat',
 ];
 
+/** Elements with random or external content. Masked so the layout is still compared. */
+export const DEFAULT_MASK: string[] = [
+  // Captchas
+  'iframe[src*="recaptcha"]',
+  '.g-recaptcha',
+  '.grecaptcha-badge',
+  '.captcha',
+  'fieldset.captcha',
+  '.cf-turnstile',
+  '#turnstile-wrapper',
+  '.frc-captcha',
+  'iframe[src*="hcaptcha"]',
+  'iframe[src*="challenges.cloudflare.com"]',
+  // Embedded maps and video players
+  'iframe[src*="google.com/maps"]',
+  'iframe[src*="maps.google"]',
+  'iframe[src*="youtube.com"]',
+  'iframe[src*="youtube-nocookie.com"]',
+  'iframe[src*="vimeo.com"]',
+  'video',
+];
+
+/** Elements removed from the page (display: none). Static selectors live in tests/vrt.css. */
+export const DEFAULT_HIDE: string[] = [
+  // eu_cookie_compliance
+  '#sliding-popup',
+  '.eu-cookie-compliance-banner',
+  // cookieconsent2 blocks (ids vary per site, including the misspelled variant)
+  '[id^="block-cookieconsent"]',
+  '[id^="block-cookieconcent"]',
+  // Cookiebot
+  '#CybotCookiebotDialogBodyUnderlay',
+  '#CookiebotWidget',
+  // Usercentrics
+  '#usercentrics-cmp-ui',
+  // CookieYes
+  '.cky-consent-container',
+  '.cky-overlay',
+  // Chat widgets
+  '#superchat-widget',
+  '[id^="superchat"]',
+  '.userlike-umm',
+];
+
 export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   sitemapPath: '/sitemap.xml',
   maxUrls: 25,
@@ -106,6 +156,10 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   },
   blockHosts: [],
   blockDefaultHosts: true,
+  mask: [],
+  maskDefaults: true,
+  hide: [],
+  hideDefaults: true,
   settle: {
     scroll: true,
     waitForImages: true,
@@ -142,6 +196,14 @@ export function mergeConfig(config: Partial<VRTConfig>): VRTConfig {
   merged.blockHosts = uniq([
     ...(merged.blockDefaultHosts !== false ? DEFAULT_BLOCK_HOSTS : []),
     ...(config.blockHosts || []),
+  ]);
+  merged.mask = uniq([
+    ...(merged.maskDefaults !== false ? DEFAULT_MASK : []),
+    ...(config.mask || []),
+  ]);
+  merged.hide = uniq([
+    ...(merged.hideDefaults !== false ? DEFAULT_HIDE : []),
+    ...(config.hide || []),
   ]);
 
   return merged;

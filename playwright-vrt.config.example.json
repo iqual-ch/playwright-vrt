@@ -32,6 +32,8 @@
     "Authorization": "Basic dXNlcjpwYXNz"
   },
   "blockHosts": ["*.example-chat-widget.com"],
+  "mask": [".my-random-teaser"],
+  "hide": ["#my-cookie-banner"],
   "settle": {
     "scroll": true,
     "waitForImages": true

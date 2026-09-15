@@ -100,6 +100,8 @@ Full config example (includes URLs + advanced settings):
 | `threshold.maxDiffPixelRatio` | `0.01` | Share of differing pixels tolerated (0–1). When both budgets are set, Playwright applies the stricter one. |
 | `extraHTTPHeaders` | `X-Automated-By: iqual/playwright-vrt` | Sent to the reference and test hosts only (sitemap fetch, crawler, screenshots), never to third-party hosts. Own headers are merged with the default. |
 | `blockHosts` | `[]` | Additional hosts to block during screenshots (`"host"` or `"*.domain"`). Merged with the built-in list (Cloudflare Turnstile, analytics, tag managers, consent CDNs, chat widgets). `blockDefaultHosts: false` disables the built-in list. |
+| `mask` | `[]` | Additional CSS selectors masked in the screenshot (geometry kept, content ignored). Merged with the built-in list (captchas, Google Maps / YouTube / Vimeo iframes, `<video>`). `maskDefaults: false` disables the built-in list. |
+| `hide` | `[]` | Additional CSS selectors removed with `display: none`. Merged with the built-in list (common cookie banners and chat widgets; see also `tests/vrt.css`). `hideDefaults: false` disables the built-in list. |
 | `settle.scroll` | `true` | Scroll through the page once before the capture so lazy images and scroll-triggered effects fire identically on both sides. |
 | `settle.waitForImages` | `true` | Wait (max 10 s) until all `<img>` have loaded or failed. |
 
