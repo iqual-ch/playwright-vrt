@@ -99,6 +99,7 @@ test('B: a page that renders differently on the test host fails with a visual di
 
   const summaryMd = fs.readFileSync(path.join(cwd, 'playwright-report', 'summary.md'), 'utf-8');
   assert.match(summaryMd, /### Visual differences/, `summary.md:\n${summaryMd}`);
+  assert.match(summaryMd, /\d+ pixels differ \(ratio [\d.]+\)/, `summary.md carries the pixel count:\n${summaryMd}`);
   assert.ok(summaryMd.includes(changedUrl), `summary.md names ${changedUrl}:\n${summaryMd}`);
   assert.doesNotMatch(summaryMd, /### No baseline from the reference host/, `summary.md:\n${summaryMd}`);
   assert.match(summaryMd, /\| 2 \| 1 \| 3 \|/, `summary.md:\n${summaryMd}`);
@@ -163,6 +164,36 @@ test('C: a URL the reference host cannot serve gets no baseline and fails in the
   assert.ok(pngs.every((p) => !p.includes('contact')), `no golden for the broken URL: ${JSON.stringify(pngs)}`);
 
   assert.match(run.stdout, /baseline screenshot\(s\) could not be captured/, describeRun('run', run, cwd));
+
+  ws.passed();
+});
+
+test('E: a reference URL behind a Cloudflare challenge gets no baseline and is named in the summary', { timeout: TEST_TIMEOUT }, async (t) => {
+  const reference = await startSite({ pages: PAGES, sitemap: SITEMAP, redirects: REDIRECTS, challenge: ['/de/contact'] });
+  const site = await startSite({ pages: PAGES, sitemap: SITEMAP, redirects: REDIRECTS });
+  t.after(() => Promise.all([reference.close(), site.close()]));
+  const cwd = makeWorkspace(reference.origin, site.origin);
+  const ws = keepOnFailure(t, cwd);
+  const blockedUrl = `${reference.origin}/de/contact`;
+
+  const run = await runCli(cwd);
+  assert.equal(run.code, 1, describeRun('run', run, cwd));
+
+  const plan = readJson(path.join(cwd, 'playwright-snapshots', 'plan.json'));
+  const blocked = plan.entries.find((e) => e.url === blockedUrl);
+  assert.ok(blocked, `plan.json has an entry for ${blockedUrl}`);
+  assert.match(blocked.referenceBlocked || '', /Cloudflare challenge \(HTTP 403\)/, `pre-flight flagged the challenge: ${JSON.stringify(blocked)}`);
+  assert.match(blocked.baselineFailed?.desktop || '', /Cloudflare challenge/, `the baseline failed with the challenge reason: ${JSON.stringify(blocked)}`);
+
+  const summaryMd = fs.readFileSync(path.join(cwd, 'playwright-report', 'summary.md'), 'utf-8');
+  assert.match(summaryMd, /### No baseline from the reference host/, `summary.md:\n${summaryMd}`);
+  assert.match(summaryMd, /### Pre-flight notes/, `summary.md:\n${summaryMd}`);
+  assert.ok(summaryMd.includes(`${blockedUrl} [desktop]: reference blocked by a Cloudflare challenge (HTTP 403)`), `summary.md names the reason:\n${summaryMd}`);
+
+  // No interstitial screenshot becomes a golden.
+  const pngs = listPngs(path.join(cwd, 'playwright-snapshots'));
+  assert.equal(pngs.length, SITEMAP.length - 1, `one snapshot per URL minus the blocked one: ${JSON.stringify(pngs)}`);
+  assert.ok(pngs.every((p) => !p.includes('contact')), `no golden for the blocked URL: ${JSON.stringify(pngs)}`);
 
   ws.passed();
 });

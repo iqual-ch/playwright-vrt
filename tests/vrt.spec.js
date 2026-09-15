@@ -21,6 +21,9 @@ const vrtConfig = process.env.VRT_CONFIG
   ? JSON.parse(process.env.VRT_CONFIG)
   : {};
 
+// 'baseline' (reference host) or 'test' (test host)
+const phase = process.env.VRT_PHASE || 'test';
+
 
 // The plan is written by the CLI: one entry per URL with the path to navigate to.
 function loadPlan() {
@@ -80,6 +83,11 @@ test.beforeEach(async ({ page }) => {
 // Create a test for each URL
 for (const entry of entries) {
   test(`VRT: ${entry.url}`, async ({ page }, testInfo) => {
+    // A reference behind a bot challenge gets no baseline; the reason ends up in the summary.
+    if (phase === 'baseline' && entry.referenceBlocked) {
+      throw new Error(entry.referenceBlocked);
+    }
+
     // Wait for `load`, then give the network a bounded chance to settle; `networkidle` alone can hang on polling widgets.
     await page.goto(entry.path, { waitUntil: 'load', timeout: GOTO_TIMEOUT });
     await page.waitForLoadState('networkidle', { timeout: NETWORK_IDLE_TIMEOUT }).catch(() => undefined);

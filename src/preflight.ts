@@ -11,6 +11,8 @@ export interface HostProbe {
   finalUrl: string;
   /** Error message when the request failed. */
   error?: string;
+  /** Set when the response is a bot challenge page instead of the site. */
+  challenge?: 'cloudflare';
   /** Wall time in ms. */
   ms: number;
 }
@@ -24,6 +26,8 @@ export interface PlanEntry {
   test?: HostProbe;
   /** Informational pre-flight findings; the URL is still tested. */
   notes?: string[];
+  /** Reason the reference cannot be captured (bot challenge); the baseline is failed with it. */
+  referenceBlocked?: string;
   /** Error of the failed baseline capture, per Playwright project (viewport). */
   baselineFailed?: Record<string, string>;
 }
@@ -75,11 +79,15 @@ export async function probeHost(baseUrl: string, paths: string[], options: Probe
         const response = await ctx.get(path, { maxRedirects: 10, timeout: options.timeout });
         // Consume the body so the request completes on the server side.
         await response.body().catch(() => undefined);
-        results.set(path, {
+        const probe: HostProbe = {
           status: response.status(),
           finalUrl: response.url(),
           ms: Date.now() - started,
-        });
+        };
+        if (response.headers()['cf-mitigated'] === 'challenge') {
+          probe.challenge = 'cloudflare';
+        }
+        results.set(path, probe);
       } catch (error) {
         results.set(path, {
           status: 0,
@@ -142,6 +150,9 @@ export function buildPlan(
         const finalRef = new URL(reference.finalUrl);
         if (finalRef.hostname !== referenceHost) {
           notes.push(`reference redirects off-host to ${finalRef.origin}`);
+        } else if (reference.challenge) {
+          entry.referenceBlocked = `reference blocked by a Cloudflare challenge (HTTP ${reference.status})`;
+          notes.push(entry.referenceBlocked);
         } else {
           if (reference.status >= 400) {
             notes.push(`reference HTTP ${reference.status}`);
@@ -162,9 +173,11 @@ export function buildPlan(
         const finalTest = new URL(test.finalUrl);
         if (finalTest.hostname !== testHost) {
           notes.push(`test redirects off-host to ${finalTest.origin}`);
+        } else if (test.challenge) {
+          notes.push(`test blocked by a Cloudflare challenge (HTTP ${test.status})`);
         } else if (test.status >= 400) {
           notes.push(`test HTTP ${test.status}`);
-        } else if (reference && reference.status >= 200 && reference.status !== test.status) {
+        } else if (reference && reference.status >= 200 && !reference.challenge && reference.status !== test.status) {
           notes.push(`status mismatch: reference ${reference.status}, test ${test.status}`);
         }
       }

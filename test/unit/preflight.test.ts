@@ -82,3 +82,21 @@ test('with no probes given, previous plan entries fill reference, test and basel
   assert.equal(plan.entries[0].test?.status, 200);
   assert.deepEqual(plan.entries[0].baselineFailed, { desktop: 'boom' });
 });
+
+test('a Cloudflare challenge on the reference adds a note and marks the entry as blocked', () => {
+  const url = 'https://ref.example/a';
+  const reference = new Map([[pathOf(url), probe({ status: 403, finalUrl: 'https://ref.example/a', challenge: 'cloudflare' })]]);
+  const test_ = new Map([[pathOf(url), probe({ status: 200, finalUrl: 'https://test.example/a' })]]);
+  const plan = buildPlan([url], config, reference, test_);
+  assert.equal(plan.entries[0].referenceBlocked, 'reference blocked by a Cloudflare challenge (HTTP 403)');
+  assert.deepEqual(plan.entries[0].notes, ['reference blocked by a Cloudflare challenge (HTTP 403)']);
+});
+
+test('a Cloudflare challenge on the test host only adds a note', () => {
+  const url = 'https://ref.example/a';
+  const reference = new Map([[pathOf(url), probe({ status: 200, finalUrl: 'https://ref.example/a' })]]);
+  const test_ = new Map([[pathOf(url), probe({ status: 403, finalUrl: 'https://test.example/a', challenge: 'cloudflare' })]]);
+  const plan = buildPlan([url], config, reference, test_);
+  assert.equal(plan.entries[0].referenceBlocked, undefined);
+  assert.deepEqual(plan.entries[0].notes, ['test blocked by a Cloudflare challenge (HTTP 403)']);
+});

@@ -108,7 +108,6 @@ export const DEFAULT_MASK: string[] = [
   // Captchas
   'iframe[src*="recaptcha"]',
   '.g-recaptcha',
-  '.grecaptcha-badge',
   '.captcha',
   'fieldset.captcha',
   '.cf-turnstile',
@@ -127,6 +126,8 @@ export const DEFAULT_MASK: string[] = [
 
 /** Elements removed from the page (display: none). Static selectors live in tests/vrt.css. */
 export const DEFAULT_HIDE: string[] = [
+  // reCAPTCHA badge, only rendered where the site key accepts the domain
+  '.grecaptcha-badge',
   // eu_cookie_compliance
   '#sliding-popup',
   '.eu-cookie-compliance-banner',

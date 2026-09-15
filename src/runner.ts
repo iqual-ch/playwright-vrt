@@ -179,7 +179,7 @@ export async function runVisualTests(options: RunnerOptions): Promise<TestResult
   const results = summarize(parsePlaywrightResults(outputDir), plan);
   results.exitCode = exitCode;
 
-  writeSummary(outputDir, config, results);
+  writeSummary(outputDir, config, results, plan);
 
   return results;
 }
@@ -345,7 +345,7 @@ export function parsePlaywrightResults(outputDir: string): TestOutcome[] {
             break;
           default:
             status = 'failed';
-            message = firstLine(stripAnsi(last?.error?.message || last?.errors?.[0]?.message || 'failed'));
+            message = describeFailure(last?.error?.message || last?.errors?.[0]?.message || 'failed');
         }
 
         outcomes.push({ url, project, status, message });
@@ -379,12 +379,13 @@ function summarize(outcomes: TestOutcome[], plan: Plan): TestResults {
   return results;
 }
 
-function writeSummary(outputDir: string, config: VRTConfig, results: TestResults): void {
+function writeSummary(outputDir: string, config: VRTConfig, results: TestResults, plan: Plan): void {
   fs.mkdirSync(outputDir, { recursive: true });
 
   const failed = results.outcomes.filter(o => o.status === 'failed' && !o.noBaseline);
   const noBaseline = results.outcomes.filter(o => o.status === 'failed' && o.noBaseline);
   const flaky = results.outcomes.filter(o => o.status === 'flaky');
+  const noted = plan.entries.filter(e => e.notes && e.notes.length > 0);
 
   const lines: string[] = [];
   lines.push('## Visual Regression Test summary');
@@ -407,6 +408,10 @@ function writeSummary(outputDir: string, config: VRTConfig, results: TestResults
     lines.push('', '### Flaky (passed on retry)', '');
     for (const o of flaky) lines.push(`- ${o.url} [${o.project}]`);
   }
+  if (noted.length > 0) {
+    lines.push('', '### Pre-flight notes', '');
+    for (const e of noted) lines.push(`- ${e.url}: ${e.notes!.join('; ')}`);
+  }
   lines.push('');
 
   fs.writeFileSync(path.join(outputDir, 'summary.md'), lines.join('\n'), 'utf-8');
@@ -419,6 +424,7 @@ function writeSummary(outputDir: string, config: VRTConfig, results: TestResults
     flaky: results.flaky,
     total: results.total,
     outcomes: results.outcomes,
+    preflightNotes: noted.map(e => ({ url: e.url, notes: e.notes })),
   }, null, 2), 'utf-8');
 }
 
@@ -445,6 +451,17 @@ export function printResults(results: TestResults, config: VRTConfig): void {
 
 function stripAnsi(text: string): string {
   return text.replace(/\[[0-9;]*m/g, '');
+}
+
+/** Screenshot failures are summarised by their size mismatch and pixel count; anything else by its first line. */
+function describeFailure(message: string): string {
+  const text = stripAnsi(message);
+  const size = text.match(/Expected an image \d+px by \d+px, received \d+px by \d+px\./);
+  const pixels = text.match(/(\d+) pixels \(ratio ([\d.]+) of all image pixels\) are different/);
+  if (size || pixels) {
+    return [size?.[0], pixels ? `${pixels[1]} pixels differ (ratio ${pixels[2]})` : undefined].filter(Boolean).join(' ');
+  }
+  return firstLine(text).replace(/^Error: /, '');
 }
 
 function firstLine(text: string): string {
