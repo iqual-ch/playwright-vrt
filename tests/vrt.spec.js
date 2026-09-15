@@ -29,6 +29,30 @@ const threshold = vrtConfig.threshold || {
   maxDiffPixelRatio: 0.01,
 };
 
+// Headers go to the hosts under test only; on third-party hosts they would fail the CORS preflight.
+const scopedHeaders = vrtConfig.extraHTTPHeaders || {};
+const ownHosts = new Set(
+  [vrtConfig.referenceUrl, vrtConfig.testUrl, process.env.BASE_URL]
+    .filter(Boolean)
+    .map((u) => new URL(u).hostname),
+);
+
+test.beforeEach(async ({ page }) => {
+  await page.route(() => true, async (route) => {
+    const request = route.request();
+    let hostname;
+    try {
+      hostname = new URL(request.url()).hostname;
+    } catch {
+      return route.continue();
+    }
+    if (ownHosts.has(hostname)) {
+      return route.continue({ headers: { ...request.headers(), ...scopedHeaders } });
+    }
+    return route.continue();
+  });
+});
+
 // Create a test for each URL
 for (const url of urls) {
   test(`VRT: ${url}`, async ({ page }) => {

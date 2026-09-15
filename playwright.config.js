@@ -45,7 +45,7 @@ export default {
     trace: 'retain-on-failure',
     screenshot: 'on',
     ignoreHTTPSErrors: ignoreHTTPSErrors,
-    extraHTTPHeaders: vrtConfig.extraHTTPHeaders || {},
+    // Headers are scoped to the hosts under test in tests/vrt.spec.js, not set here.
     launchOptions: {
       slowMo: 100,
     },

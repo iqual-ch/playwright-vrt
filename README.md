@@ -87,6 +87,19 @@ Full config example (includes URLs + advanced settings):
 }
 ```
 
+### Options
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `referenceUrl` / `testUrl` | – | Hosts to compare. Baselines are taken from `referenceUrl`. |
+| `sitemapPath` | `/sitemap.xml` | Sitemap on the reference host; crawler fallback (homepage links) if it fails. |
+| `maxUrls` | `25` | Number of URLs tested (after `include`/`exclude`). |
+| `include` / `exclude` | `["*"]` / `[]` | Glob patterns (micromatch) matched against `pathname + search`, e.g. `"/de"` or `"**/user/**"`. Use `exclude` for URLs that behave differently on the two hosts (redirects to other domains, SSO, search). |
+| `viewports` | desktop 1920×1080 | One Playwright project per viewport. |
+| `threshold.maxDiffPixels` | `100` | Differing pixels tolerated per screenshot. |
+| `threshold.maxDiffPixelRatio` | `0.01` | Share of differing pixels tolerated (0–1). When both budgets are set, Playwright applies the stricter one. |
+| `extraHTTPHeaders` | `X-Automated-By: iqual/playwright-vrt` | Sent to the reference and test hosts only (sitemap fetch, crawler, screenshots), never to third-party hosts. Own headers are merged with the default. |
+
 ## CLI Options
 
 ```bash

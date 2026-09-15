@@ -22,6 +22,7 @@ export interface VRTConfig {
     maxDiffPixels?: number;
     maxDiffPixelRatio?: number;
   };
+  /** Sent to the reference and test hosts only, never to third parties. */
   extraHTTPHeaders?: Record<string, string>;
 }
 
