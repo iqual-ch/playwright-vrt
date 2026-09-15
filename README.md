@@ -78,8 +78,7 @@ Full config example (includes URLs + advanced settings):
     { "name": "mobile", "width": 375, "height": 667 }
   ],
   "threshold": {
-    "maxDiffPixels": 100,
-    "maxDiffPixelRatio": 0.01
+    "maxDiffPixels": 500
   },
   "extraHTTPHeaders": {
     "Authorization": "Basic dXNlcjpwYXNz"
@@ -96,8 +95,9 @@ Full config example (includes URLs + advanced settings):
 | `maxUrls` | `25` | Number of URLs tested (after `include`/`exclude`). |
 | `include` / `exclude` | `["*"]` / `[]` | Glob patterns (micromatch) matched against `pathname + search`, e.g. `"/de"` or `"**/user/**"`. Use `exclude` for URLs that behave differently on the two hosts (redirects to other domains, SSO, search). |
 | `viewports` | desktop 1920×1080 | One Playwright project per viewport. |
-| `threshold.maxDiffPixels` | `100` | Differing pixels tolerated per screenshot. |
-| `threshold.maxDiffPixelRatio` | `0.01` | Share of differing pixels tolerated (0–1). When both budgets are set, Playwright applies the stricter one. |
+| `threshold.maxDiffPixels` | `500` | Differing pixels tolerated per screenshot. Same budget on every URL regardless of page length. |
+| `threshold.maxDiffPixelRatio` | unset | Share of differing pixels tolerated (0–1). When both budgets are set, Playwright applies the stricter one; setting either one replaces the default budget. |
+| `threshold.threshold` | `0.2` | Per-pixel colour tolerance (0–1). |
 | `extraHTTPHeaders` | `X-Automated-By: iqual/playwright-vrt` | Sent to the reference and test hosts only (sitemap fetch, crawler, screenshots), never to third-party hosts. Own headers are merged with the default. |
 | `blockHosts` | `[]` | Additional hosts to block during screenshots (`"host"` or `"*.domain"`). Merged with the built-in list (Cloudflare Turnstile, analytics, tag managers, consent CDNs, chat widgets). `blockDefaultHosts: false` disables the built-in list. |
 | `mask` | `[]` | Additional CSS selectors masked in the screenshot (geometry kept, content ignored). Merged with the built-in list (captchas, Google Maps / YouTube / Vimeo iframes, `<video>`). `maskDefaults: false` disables the built-in list. |

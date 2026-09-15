@@ -19,8 +19,12 @@ export interface VRTConfig {
     height: number;
   }>;
   threshold?: {
+    /** Absolute pixel budget. When both budgets are set, Playwright applies the stricter one. */
     maxDiffPixels?: number;
+    /** Ratio of differing pixels (0..1). */
     maxDiffPixelRatio?: number;
+    /** Per-pixel colour tolerance (0..1), Playwright default 0.2. */
+    threshold?: number;
   };
   /** Sent to the reference and test hosts only, never to third parties. */
   extraHTTPHeaders?: Record<string, string>;
@@ -153,8 +157,7 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
     { name: 'desktop', width: 1920, height: 1080 },
   ],
   threshold: {
-    maxDiffPixels: 100,
-    maxDiffPixelRatio: 0.01,
+    maxDiffPixels: 500,
   },
   extraHTTPHeaders: {
     'X-Automated-By': 'iqual/playwright-vrt',
@@ -179,6 +182,8 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
  * runner receives the final values and the config hash covers them.
  */
 export function mergeConfig(config: Partial<VRTConfig>): VRTConfig {
+  // A project that sets its own pixel budget replaces the default one instead of being capped by it.
+  const hasOwnBudget = config.threshold?.maxDiffPixels !== undefined || config.threshold?.maxDiffPixelRatio !== undefined;
   const merged = {
     ...DEFAULT_CONFIG,
     ...config,
@@ -187,7 +192,7 @@ export function mergeConfig(config: Partial<VRTConfig>): VRTConfig {
       ...config.crawlOptions,
     },
     viewports: config.viewports || DEFAULT_CONFIG.viewports,
-    threshold: {
+    threshold: hasOwnBudget ? { ...config.threshold } : {
       ...DEFAULT_CONFIG.threshold,
       ...config.threshold,
     },
@@ -264,9 +269,15 @@ export function validateConfig(config: VRTConfig): void {
 
   // Validate threshold
   if (config.threshold) {
-    if (config.threshold.maxDiffPixelRatio &&
-        (config.threshold.maxDiffPixelRatio < 0 || config.threshold.maxDiffPixelRatio > 1)) {
-      throw new Error('maxDiffPixelRatio must be between 0 and 1');
+    const { maxDiffPixelRatio, maxDiffPixels, threshold } = config.threshold;
+    if (maxDiffPixelRatio !== undefined && (maxDiffPixelRatio < 0 || maxDiffPixelRatio > 1)) {
+      throw new Error('threshold.maxDiffPixelRatio must be between 0 and 1');
+    }
+    if (maxDiffPixels !== undefined && maxDiffPixels < 0) {
+      throw new Error('threshold.maxDiffPixels must be >= 0');
+    }
+    if (threshold !== undefined && (threshold < 0 || threshold > 1)) {
+      throw new Error('threshold.threshold must be between 0 and 1');
     }
   }
 

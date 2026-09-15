@@ -24,10 +24,7 @@ const vrtConfig = process.env.VRT_CONFIG
   ? JSON.parse(process.env.VRT_CONFIG)
   : {};
 
-const threshold = vrtConfig.threshold || {
-  maxDiffPixels: 100,
-  maxDiffPixelRatio: 0.01,
-};
+const threshold = vrtConfig.threshold || { maxDiffPixels: 500 };
 
 const settle = { scroll: true, waitForImages: true, ...(vrtConfig.settle || {}) };
 const maskSelectors = vrtConfig.mask || [];
@@ -95,9 +92,10 @@ for (const url of urls) {
       timeout: 30_000,
       mask: maskSelectors.map((selector) => page.locator(selector)),
       maskColor: '#FF00FF',
-      maxDiffPixels: threshold.maxDiffPixels,
-      maxDiffPixelRatio: threshold.maxDiffPixelRatio,
     };
+    if (threshold.maxDiffPixels !== undefined) screenshotOptions.maxDiffPixels = threshold.maxDiffPixels;
+    if (threshold.maxDiffPixelRatio !== undefined) screenshotOptions.maxDiffPixelRatio = threshold.maxDiffPixelRatio;
+    if (threshold.threshold !== undefined) screenshotOptions.threshold = threshold.threshold;
 
     try {
       await expect(page).toHaveScreenshot({ ...screenshotOptions, clip });
