@@ -98,6 +98,7 @@ for (const entry of entries) {
 
     const viewport = testInfo.project.use.viewport || { width: 1920, height: 1080 };
     await settlePage(page, viewport.height);
+    await prepareCapture(page);
 
     // Clip the full-page capture to the viewport width so an overflowing element cannot widen the image.
     const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => viewport.height);
@@ -137,6 +138,11 @@ async function settlePage(page, viewportHeight) {
     await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })).catch(() => undefined);
   }
 
+  await waitForMedia(page);
+}
+
+// Wait for images (when enabled) and fonts, then let the layout settle.
+async function waitForMedia(page) {
   if (settle.waitForImages) {
     await Promise.race([
       page.evaluate(waitForImages).catch(() => undefined),
@@ -150,6 +156,20 @@ async function settlePage(page, viewportHeight) {
   // Let the layout settle after the scroll
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(500);
+}
+
+// Routing turns the HTTP cache off (Playwright: "Enabling routing disables http cache"). Chromium fires a
+// resize event on every full-page capture and responsive images then load their source again; without a
+// cache that is a network round trip during the capture, so two consecutive screenshots of an image-heavy
+// page never match and the expectation times out ("Failed to take two consecutive stable screenshots").
+// The routes have done their job by now: the header went out with the navigation, and blocked hosts stay
+// unresolvable through --host-resolver-rules (playwright.config.js).
+async function prepareCapture(page) {
+  await page.unrouteAll({ behavior: 'wait' });
+  // One throwaway capture triggers what the capture itself changes (resize handlers, lazy images at the
+  // expanded viewport), so the measured captures start from that state.
+  await page.screenshot({ fullPage: true, animations: 'disabled', stylePath }).catch(() => undefined);
+  await waitForMedia(page);
 }
 
 /** Runs in the browser: resolve once every <img> has loaded or failed. */

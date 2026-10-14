@@ -8,3 +8,11 @@ export function hostPatternToRegExp(pattern) {
   }
   return new RegExp(`^${escaped.replace(/\*/g, '.*')}$`, 'i');
 }
+
+/** Chromium --host-resolver-rules entries that make a pattern unresolvable ("MAP host ~NOTFOUND"). */
+export function hostPatternToResolverRules(pattern) {
+  const rules = [`MAP ${pattern} ~NOTFOUND`];
+  // Like hostPatternToRegExp, "*.example.com" also covers the bare domain.
+  if (pattern.startsWith('*.')) rules.push(`MAP ${pattern.slice(2)} ~NOTFOUND`);
+  return rules;
+}

@@ -217,6 +217,33 @@ test('D: when no baseline can be created at all the CLI exits 2', { timeout: TES
   ws.passed();
 });
 
+test('F: an image that loads again during the capture comes from the browser cache, so the capture is stable', { timeout: TEST_TIMEOUT }, async (t) => {
+  // images.html reloads its image on every resize event, which Chromium fires during a full-page capture.
+  // With the HTTP cache off (routing) that is a network request in the middle of every capture.
+  const pages = { '/de/': 'images.html' };
+  const reference = await startSite({ pages, sitemap: ['/de/'] });
+  const site = await startSite({ pages, sitemap: ['/de/'] });
+  t.after(() => Promise.all([reference.close(), site.close()]));
+  const cwd = makeWorkspace(reference.origin, site.origin);
+  const ws = keepOnFailure(t, cwd);
+
+  const run = await runCli(cwd);
+  assert.equal(run.code, 0, describeRun('run', run, cwd));
+
+  const summary = readJson(path.join(cwd, 'playwright-report', 'summary.json'));
+  assert.equal(summary.passed, 1, describeRun('run', run, cwd));
+  assert.equal(summary.failed, 0, describeRun('run', run, cwd));
+
+  // The page was loaded once per host and so was the image: the reloads during the captures hit the cache.
+  for (const [label, host] of [['reference host', reference], ['test host', site]]) {
+    const images = host.requests.filter((r) => r.path === '/image.png').length;
+    const documents = host.requests.filter((r) => r.path === '/de/' && r.headers['sec-fetch-dest'] === 'document').length;
+    assert.equal(images, documents, `${label}: the image was requested once per page load (${images} image requests, ${documents} page loads)`);
+  }
+
+  ws.passed();
+});
+
 // --- helpers -------------------------------------------------------------------------
 
 function makeWorkspace(referenceUrl, testUrl) {

@@ -68,6 +68,17 @@ export async function startSite(options) {
       return;
     }
 
+    // Image fixtures are cacheable, like a CDN image, so the browser cache behaviour is observable.
+    if (pathname.endsWith('.png')) {
+      const image = path.join(fixtureDir, path.basename(pathname));
+      if (fs.existsSync(image)) {
+        const body = fs.readFileSync(image);
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': body.length, 'Cache-Control': 'max-age=3600' });
+        res.end(body);
+        return;
+      }
+    }
+
     const file = overrides[pathname] || pages[pathname];
     if (!file) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
