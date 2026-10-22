@@ -26,6 +26,7 @@ export async function startSite(options) {
     destroy = [],
     challenge = [],
     overrides = {},
+    vars = {},
     fixtureDir = FIXTURE_DIR,
   } = options;
 
@@ -68,7 +69,7 @@ export async function startSite(options) {
       return;
     }
 
-    // Image fixtures are cacheable, like a CDN image, so the browser cache behaviour is observable.
+    // Cacheable, like a CDN image.
     if (pathname.endsWith('.png')) {
       const image = path.join(fixtureDir, path.basename(pathname));
       if (fs.existsSync(image)) {
@@ -86,7 +87,9 @@ export async function startSite(options) {
       return;
     }
 
-    const body = fs.readFileSync(path.join(fixtureDir, file));
+    // "{{name}}" in a page is replaced with vars[name].
+    const html = Object.entries(vars).reduce((text, [name, value]) => text.replaceAll(`{{${name}}}`, value), fs.readFileSync(path.join(fixtureDir, file), 'utf-8'));
+    const body = Buffer.from(html, 'utf-8');
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
       'Content-Length': body.length,

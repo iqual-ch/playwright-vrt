@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { hostPatternToRegExp } from './host-pattern.js';
+import { hostPatternToRegExp, hostPatternToUrlPatterns } from './host-pattern.js';
 
 // ESM equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -45,10 +45,12 @@ const threshold = vrtConfig.threshold || { maxDiffPixels: 500 };
 const settle = { scroll: true, waitForImages: true, ...(vrtConfig.settle || {}) };
 const maskSelectors = vrtConfig.mask || [];
 const hideSelectors = vrtConfig.hide || [];
-const blockHosts = (vrtConfig.blockHosts || []).map(hostPatternToRegExp);
+const blockHostPatterns = vrtConfig.blockHosts || [];
+const blockHosts = blockHostPatterns.map(hostPatternToRegExp);
 
 // Headers go to the hosts under test only; on third-party hosts they would fail the CORS preflight.
-const scopedHeaders = vrtConfig.extraHTTPHeaders || {};
+const scopedHeaders = Object.entries(vrtConfig.extraHTTPHeaders || {});
+const scopedHeaderNames = new Set(scopedHeaders.map(([name]) => name.toLowerCase()));
 const ownHosts = new Set(
   [vrtConfig.referenceUrl, vrtConfig.testUrl, process.env.BASE_URL]
     .filter(Boolean)
@@ -60,24 +62,35 @@ const NETWORK_IDLE_TIMEOUT = 10_000;
 const IMAGES_TIMEOUT = 10_000;
 const SCROLL_STEP_DELAY = 150;
 const MAX_SCROLL_STEPS = 80;
+const WARMUP_CAPTURE_TIMEOUT = 10_000;
 
+// Add the headers and abort blocked hosts via CDP; page.route() would disable the HTTP cache.
 test.beforeEach(async ({ page }) => {
-  await page.route(() => true, async (route) => {
-    const request = route.request();
+  const patterns = [...ownHosts, ...blockHostPatterns].flatMap(hostPatternToUrlPatterns);
+  if (patterns.length === 0) return;
+  const cdp = await page.context().newCDPSession(page);
+  cdp.on('Fetch.requestPaused', ({ requestId, request }) => {
+    // A request that cannot be continued fails instead of staying paused.
+    const fail = (errorReason) => cdp.send('Fetch.failRequest', { requestId, errorReason }).catch(() => undefined);
     let hostname;
     try {
-      hostname = new URL(request.url()).hostname;
+      hostname = new URL(request.url).hostname;
     } catch {
-      return route.continue();
+      hostname = undefined;
     }
-    if (blockHosts.some((re) => re.test(hostname))) {
-      return route.abort('blockedbyclient');
+    if (hostname !== undefined && blockHosts.some((re) => re.test(hostname))) {
+      return fail('BlockedByClient');
     }
-    if (ownHosts.has(hostname)) {
-      return route.continue({ headers: { ...request.headers(), ...scopedHeaders } });
+    if (!ownHosts.has(hostname) || scopedHeaders.length === 0) {
+      return cdp.send('Fetch.continueRequest', { requestId }).catch(() => fail('Failed'));
     }
-    return route.continue();
+    const headers = Object.entries(request.headers)
+      .filter(([name]) => !scopedHeaderNames.has(name.toLowerCase()))
+      .concat(scopedHeaders)
+      .map(([name, value]) => ({ name, value: String(value) }));
+    return cdp.send('Fetch.continueRequest', { requestId, headers }).catch(() => fail('Failed'));
   });
+  await cdp.send('Fetch.enable', { patterns: patterns.map((urlPattern) => ({ urlPattern, requestStage: 'Request' })) });
 });
 
 // Create a test for each URL
@@ -158,17 +171,9 @@ async function waitForMedia(page) {
   await page.waitForTimeout(500);
 }
 
-// Routing turns the HTTP cache off (Playwright: "Enabling routing disables http cache"). Chromium fires a
-// resize event on every full-page capture and responsive images then load their source again; without a
-// cache that is a network round trip during the capture, so two consecutive screenshots of an image-heavy
-// page never match and the expectation times out ("Failed to take two consecutive stable screenshots").
-// The routes have done their job by now: the header went out with the navigation, and blocked hosts stay
-// unresolvable through --host-resolver-rules (playwright.config.js).
+// A full-page capture resizes the viewport (resize handlers, lazy images); a throwaway one settles that first.
 async function prepareCapture(page) {
-  await page.unrouteAll({ behavior: 'wait' });
-  // One throwaway capture triggers what the capture itself changes (resize handlers, lazy images at the
-  // expanded viewport), so the measured captures start from that state.
-  await page.screenshot({ fullPage: true, animations: 'disabled', stylePath }).catch(() => undefined);
+  await page.screenshot({ fullPage: true, animations: 'disabled', stylePath, timeout: WARMUP_CAPTURE_TIMEOUT }).catch(() => undefined);
   await waitForMedia(page);
 }
 

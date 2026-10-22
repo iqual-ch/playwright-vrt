@@ -15,13 +15,13 @@
 <img id="image" src="/image.png" alt="">
 <div class="spacer"></div>
 <script>
-  // Stand-in for a responsive image: Chromium fires "resize" during a full-page capture and the
-  // image loads again from the same URL. Only the browser cache keeps that off the network.
+  // Full-page captures fire "resize": reload the image like a responsive one, and call the host.
   const image = document.getElementById('image');
   window.addEventListener('resize', () => {
     const src = image.src;
     image.src = '';
     image.src = src;
+    fetch('/resize-ping', { cache: 'no-store' }).catch(() => undefined);
   });
 </script>
 </body>

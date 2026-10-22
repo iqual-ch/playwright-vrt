@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hostPatternToRegExp, hostPatternToResolverRules } from '../../tests/host-pattern.js';
+import { hostPatternToRegExp, hostPatternToResolverRules, hostPatternToUrlPatterns } from '../../tests/host-pattern.js';
 
 test('a wildcard pattern matches the bare domain and any subdomain', () => {
   const re = hostPatternToRegExp('*.example.com');
@@ -30,4 +30,17 @@ test('a wildcard pattern becomes resolver rules for the subdomains and the bare 
 
 test('a plain host pattern becomes a single resolver rule', () => {
   assert.deepEqual(hostPatternToResolverRules('challenges.cloudflare.com'), ['MAP challenges.cloudflare.com ~NOTFOUND']);
+});
+
+test('a wildcard pattern becomes URL patterns for the subdomains and the bare domain', () => {
+  assert.deepEqual(hostPatternToUrlPatterns('*.example.com'), ['*://*.example.com*', '*://example.com*']);
+});
+
+test('a plain host pattern becomes a single URL pattern', () => {
+  assert.deepEqual(hostPatternToUrlPatterns('www.example.com'), ['*://www.example.com*']);
+});
+
+test('host patterns are lowercased for Chromium, which matches them case-sensitively', () => {
+  assert.deepEqual(hostPatternToUrlPatterns('Cdn.Example.com'), ['*://cdn.example.com*']);
+  assert.deepEqual(hostPatternToResolverRules('Cdn.Example.com'), ['MAP cdn.example.com ~NOTFOUND']);
 });

@@ -14,8 +14,7 @@ const workingDir = process.cwd();
 const baseHost = new URL(process.env.BASE_URL).hostname;
 const ignoreHTTPSErrors = baseHost.endsWith('ddev.site') || baseHost === 'localhost' || baseHost.endsWith('.localhost');
 
-// Blocked hosts fail to resolve inside the browser, so they stay blocked after tests/vrt.spec.js drops
-// its routes before the capture (routing disables the HTTP cache).
+// Blocked hosts are also unresolvable in the browser.
 const hostResolverRules = (vrtConfig.blockHosts || []).flatMap(hostPatternToResolverRules).join(', ');
 
 // 'baseline' writes every snapshot; 'test' never writes one, so a missing baseline fails.
@@ -62,7 +61,8 @@ export default {
     timezoneId: vrtConfig.timezoneId || 'Europe/Zurich',
     launchOptions: {
       slowMo: 100,
-      args: hostResolverRules ? [`--host-resolver-rules=${hostResolverRules}`] : [],
+      // One process for all frames, so tests/vrt.spec.js also intercepts cross-site iframes (full Chromium, --headed).
+      args: ['--disable-site-isolation-trials', ...(hostResolverRules ? [`--host-resolver-rules=${hostResolverRules}`] : [])],
     },
     contextOptions: {
       reducedMotion: 'reduce',
