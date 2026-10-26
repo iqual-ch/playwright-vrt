@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { hostPatternToRegExp } from './host-pattern.js';
+import { hostPatternToRegExp, hostPatternToUrlPatterns } from './host-pattern.js';
 
 // ESM equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -45,10 +45,12 @@ const threshold = vrtConfig.threshold || { maxDiffPixels: 500 };
 const settle = { scroll: true, waitForImages: true, ...(vrtConfig.settle || {}) };
 const maskSelectors = vrtConfig.mask || [];
 const hideSelectors = vrtConfig.hide || [];
-const blockHosts = (vrtConfig.blockHosts || []).map(hostPatternToRegExp);
+const blockHostPatterns = vrtConfig.blockHosts || [];
+const blockHosts = blockHostPatterns.map(hostPatternToRegExp);
 
 // Headers go to the hosts under test only; on third-party hosts they would fail the CORS preflight.
-const scopedHeaders = vrtConfig.extraHTTPHeaders || {};
+const scopedHeaders = Object.entries(vrtConfig.extraHTTPHeaders || {});
+const scopedHeaderNames = new Set(scopedHeaders.map(([name]) => name.toLowerCase()));
 const ownHosts = new Set(
   [vrtConfig.referenceUrl, vrtConfig.testUrl, process.env.BASE_URL]
     .filter(Boolean)
@@ -60,24 +62,35 @@ const NETWORK_IDLE_TIMEOUT = 10_000;
 const IMAGES_TIMEOUT = 10_000;
 const SCROLL_STEP_DELAY = 150;
 const MAX_SCROLL_STEPS = 80;
+const WARMUP_CAPTURE_TIMEOUT = 10_000;
 
+// Add the headers and abort blocked hosts via CDP; page.route() would disable the HTTP cache.
 test.beforeEach(async ({ page }) => {
-  await page.route(() => true, async (route) => {
-    const request = route.request();
+  const patterns = [...ownHosts, ...blockHostPatterns].flatMap(hostPatternToUrlPatterns);
+  if (patterns.length === 0) return;
+  const cdp = await page.context().newCDPSession(page);
+  cdp.on('Fetch.requestPaused', ({ requestId, request }) => {
+    // A request that cannot be continued fails instead of staying paused.
+    const fail = (errorReason) => cdp.send('Fetch.failRequest', { requestId, errorReason }).catch(() => undefined);
     let hostname;
     try {
-      hostname = new URL(request.url()).hostname;
+      hostname = new URL(request.url).hostname;
     } catch {
-      return route.continue();
+      hostname = undefined;
     }
-    if (blockHosts.some((re) => re.test(hostname))) {
-      return route.abort('blockedbyclient');
+    if (hostname !== undefined && blockHosts.some((re) => re.test(hostname))) {
+      return fail('BlockedByClient');
     }
-    if (ownHosts.has(hostname)) {
-      return route.continue({ headers: { ...request.headers(), ...scopedHeaders } });
+    if (!ownHosts.has(hostname) || scopedHeaders.length === 0) {
+      return cdp.send('Fetch.continueRequest', { requestId }).catch(() => fail('Failed'));
     }
-    return route.continue();
+    const headers = Object.entries(request.headers)
+      .filter(([name]) => !scopedHeaderNames.has(name.toLowerCase()))
+      .concat(scopedHeaders)
+      .map(([name, value]) => ({ name, value: String(value) }));
+    return cdp.send('Fetch.continueRequest', { requestId, headers }).catch(() => fail('Failed'));
   });
+  await cdp.send('Fetch.enable', { patterns: patterns.map((urlPattern) => ({ urlPattern, requestStage: 'Request' })) });
 });
 
 // Create a test for each URL
@@ -98,6 +111,7 @@ for (const entry of entries) {
 
     const viewport = testInfo.project.use.viewport || { width: 1920, height: 1080 };
     await settlePage(page, viewport.height);
+    await prepareCapture(page);
 
     // Clip the full-page capture to the viewport width so an overflowing element cannot widen the image.
     const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => viewport.height);
@@ -137,6 +151,11 @@ async function settlePage(page, viewportHeight) {
     await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' })).catch(() => undefined);
   }
 
+  await waitForMedia(page);
+}
+
+// Wait for images (when enabled) and fonts, then let the layout settle.
+async function waitForMedia(page) {
   if (settle.waitForImages) {
     await Promise.race([
       page.evaluate(waitForImages).catch(() => undefined),
@@ -150,6 +169,12 @@ async function settlePage(page, viewportHeight) {
   // Let the layout settle after the scroll
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(500);
+}
+
+// A full-page capture resizes the viewport (resize handlers, lazy images); a throwaway one settles that first.
+async function prepareCapture(page) {
+  await page.screenshot({ fullPage: true, animations: 'disabled', stylePath, timeout: WARMUP_CAPTURE_TIMEOUT }).catch(() => undefined);
+  await waitForMedia(page);
 }
 
 /** Runs in the browser: resolve once every <img> has loaded or failed. */

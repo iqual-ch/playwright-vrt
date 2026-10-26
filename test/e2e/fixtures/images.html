@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Images</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #ffffff; }
+  h1 { margin: 40px; font: 32px/1 sans-serif; color: #000; }
+  img { display: block; width: 400px; height: 200px; margin: 40px; }
+  .spacer { height: 2400px; }
+</style>
+</head>
+<body>
+<h1>Images</h1>
+<img id="image" src="/image.png" alt="">
+<div class="spacer"></div>
+<script>
+  // Full-page captures fire "resize": reload the image like a responsive one, and call the host.
+  const image = document.getElementById('image');
+  window.addEventListener('resize', () => {
+    const src = image.src;
+    image.src = '';
+    image.src = src;
+    fetch('/resize-ping', { cache: 'no-store' }).catch(() => undefined);
+  });
+</script>
+</body>
+</html>

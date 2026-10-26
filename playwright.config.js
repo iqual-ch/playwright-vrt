@@ -2,6 +2,7 @@
 // User's config is loaded via environment variables
 
 import { join } from 'path';
+import { hostPatternToResolverRules } from './tests/host-pattern.js';
 
 const vrtConfig = process.env.VRT_CONFIG
   ? JSON.parse(process.env.VRT_CONFIG)
@@ -12,6 +13,9 @@ const workingDir = process.cwd();
 
 const baseHost = new URL(process.env.BASE_URL).hostname;
 const ignoreHTTPSErrors = baseHost.endsWith('ddev.site') || baseHost === 'localhost' || baseHost.endsWith('.localhost');
+
+// Blocked hosts are also unresolvable in the browser.
+const hostResolverRules = (vrtConfig.blockHosts || []).flatMap(hostPatternToResolverRules).join(', ');
 
 // 'baseline' writes every snapshot; 'test' never writes one, so a missing baseline fails.
 const phase = process.env.VRT_PHASE || 'test';
@@ -57,6 +61,8 @@ export default {
     timezoneId: vrtConfig.timezoneId || 'Europe/Zurich',
     launchOptions: {
       slowMo: 100,
+      // One process for all frames, so tests/vrt.spec.js also intercepts cross-site iframes (full Chromium, --headed).
+      args: ['--disable-site-isolation-trials', ...(hostResolverRules ? [`--host-resolver-rules=${hostResolverRules}`] : [])],
     },
     contextOptions: {
       reducedMotion: 'reduce',

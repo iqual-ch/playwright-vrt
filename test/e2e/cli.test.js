@@ -217,13 +217,63 @@ test('D: when no baseline can be created at all the CLI exits 2', { timeout: TES
   ws.passed();
 });
 
+test('F: images reloaded during the capture come from the browser cache and requests keep the header', { timeout: TEST_TIMEOUT }, async (t) => {
+  const pages = { '/de/': 'images.html' };
+  const reference = await startSite({ pages, sitemap: ['/de/'] });
+  const site = await startSite({ pages, sitemap: ['/de/'] });
+  t.after(() => Promise.all([reference.close(), site.close()]));
+  const cwd = makeWorkspace(reference.origin, site.origin);
+  const ws = keepOnFailure(t, cwd);
+
+  const run = await runCli(cwd);
+  assert.equal(run.code, 0, describeRun('run', run, cwd));
+
+  const summary = readJson(path.join(cwd, 'playwright-report', 'summary.json'));
+  assert.equal(summary.passed, 1, describeRun('run', run, cwd));
+  assert.equal(summary.failed, 0, describeRun('run', run, cwd));
+
+  for (const [label, host] of [['reference host', reference], ['test host', site]]) {
+    const images = host.requests.filter((r) => r.path === '/image.png').length;
+    const documents = host.requests.filter((r) => r.path === '/de/' && r.headers['sec-fetch-dest'] === 'document').length;
+    assert.equal(images, documents, `${label}: the image was requested once per page load (${images} image requests, ${documents} page loads)`);
+    assert.ok(host.requests.some((r) => r.path === '/resize-ping'), `${label}: the page called the host during the capture`);
+    assertHeaderOnEveryRequest(host.requests, label);
+  }
+
+  ws.passed();
+});
+
+test('G: requests to a blocked host are aborted and third-party hosts never get the header', { timeout: TEST_TIMEOUT }, async (t) => {
+  // One third-party server under two names: 127.0.0.1 (blocked) and [::1]. The sites under test are "localhost".
+  const thirdParty = await startSite({ pages: {}, sitemap: [] });
+  const vars = { blocked: `http://127.0.0.1:${thirdParty.port}`, third: `http://[::1]:${thirdParty.port}` };
+  const pages = { '/de/': 'third-party.html' };
+  const reference = await startSite({ pages, sitemap: ['/de/'], vars });
+  const site = await startSite({ pages, sitemap: ['/de/'], vars });
+  t.after(() => Promise.all([reference.close(), site.close(), thirdParty.close()]));
+  const cwd = makeWorkspace(reference.origin, site.origin, { blockHosts: ['127.0.0.1'] });
+  const ws = keepOnFailure(t, cwd);
+
+  const run = await runCli(cwd);
+  assert.equal(run.code, 0, describeRun('run', run, cwd));
+
+  const blocked = thirdParty.requests.filter((r) => r.path.includes('blocked'));
+  assert.deepEqual(blocked, [], 'the blocked host was never contacted');
+  const third = thirdParty.requests.filter((r) => r.path.includes('third'));
+  assert.ok(third.length > 0, 'the third-party host was contacted');
+  assert.ok(third.every((r) => r.headers[HEADER] === undefined), `no "${HEADER}" header on third-party requests: ${JSON.stringify(third.map((r) => r.headers[HEADER]))}`);
+  assertHeaderOnEveryRequest(site.requests, 'test host');
+
+  ws.passed();
+});
+
 // --- helpers -------------------------------------------------------------------------
 
-function makeWorkspace(referenceUrl, testUrl) {
+function makeWorkspace(referenceUrl, testUrl, config = {}) {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'playwright-vrt-e2e-'));
   fs.writeFileSync(
     path.join(cwd, 'playwright-vrt.config.json'),
-    JSON.stringify({ referenceUrl, testUrl, maxUrls: 10 }, null, 2),
+    JSON.stringify({ referenceUrl, testUrl, maxUrls: 10, ...config }, null, 2),
     'utf-8',
   );
   return cwd;
