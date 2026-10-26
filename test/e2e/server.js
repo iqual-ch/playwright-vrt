@@ -16,6 +16,7 @@ export const FIXTURE_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)
  * @param {string[]} [options.destroy]               paths whose socket is destroyed without a response
  * @param {string[]} [options.challenge]             paths answered with a 403 Cloudflare challenge page
  * @param {Record<string, string>} [options.overrides] path -> fixture file served instead of pages[path]
+ * @param {Record<string, number>} [options.delays]  path -> milliseconds before the response
  * @param {string} [options.fixtureDir]
  */
 export async function startSite(options) {
@@ -27,6 +28,7 @@ export async function startSite(options) {
     challenge = [],
     overrides = {},
     vars = {},
+    delays = {},
     fixtureDir = FIXTURE_DIR,
   } = options;
 
@@ -34,10 +36,11 @@ export async function startSite(options) {
   const requests = [];
   let origin = '';
 
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || '/', 'http://localhost');
     const pathname = url.pathname;
     requests.push({ method: req.method || 'GET', path: pathname + url.search, headers: { ...req.headers } });
+    if (delays[pathname]) await new Promise((resolve) => setTimeout(resolve, delays[pathname]));
 
     if (destroy.includes(pathname)) {
       req.socket.destroy();

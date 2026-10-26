@@ -88,7 +88,7 @@ Full config example (includes URLs + advanced settings):
   "hide": ["#my-cookie-banner"],
   "locale": "de-CH",
   "timezoneId": "Europe/Zurich",
-  "workers": 2,
+  "workers": 3,
   "preflight": true,
   "settle": { "scroll": true, "waitForImages": true }
 }
@@ -111,10 +111,10 @@ Full config example (includes URLs + advanced settings):
 | `mask` | `[]` | Additional CSS selectors masked in the screenshot (geometry kept, content ignored). Merged with the built-in list (captchas, Google Maps / YouTube / Vimeo iframes, `<video>`). `maskDefaults: false` disables the built-in list. |
 | `hide` | `[]` | Additional CSS selectors removed with `display: none`. Merged with the built-in list (common cookie banners and chat widgets; see also `tests/vrt.css`). `hideDefaults: false` disables the built-in list. |
 | `locale` / `timezoneId` | `de-CH` / `Europe/Zurich` | Browser locale and timezone for both sides. |
-| `workers` | `2` | Parallel Playwright workers. |
+| `workers` | `3` | Parallel Playwright workers. |
 | `preflight` | `true` | One plain request per URL on both hosts before the screenshots: warms up a cold test site, follows an on-host redirect of the reference (e.g. `/` → `/de`) so both sides are compared on the same path, and logs status anomalies to the summary. A reference URL answered by a Cloudflare challenge gets no baseline and fails with that reason. Nothing else is excluded by pre-flight. |
 | `settle.scroll` | `true` | Scroll through the page once before the capture so lazy images and scroll-triggered effects fire identically on both sides. |
-| `settle.waitForImages` | `true` | Wait (max 10 s) until all `<img>` have loaded or failed. |
+| `settle.waitForImages` | `true` | Wait (max 10 s) until all `<img>` that can appear in the screenshot have loaded or failed. Lazy images are loaded right away; hidden or off-screen ones (closed tabs, slides outside the page width) are skipped. |
 
 ## CLI Options
 

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Lazy images</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #ffffff; }
+  body { overflow-x: hidden; }
+  h1 { margin: 40px; font: 32px/1 sans-serif; color: #000; }
+  img { display: block; width: 400px; height: 200px; margin: 40px; }
+  .tab { display: none; }
+  .slides { display: flex; width: 8000px; }
+  .slides img { margin: 0 3600px 0 40px; }
+  .spacer { height: 6000px; }
+</style>
+</head>
+<body>
+<h1>Lazy images</h1>
+<div class="tab"><img loading="lazy" src="/image.png?hidden" alt=""></div>
+<div class="slides">
+  <img loading="lazy" src="/image.png?slide" alt="">
+  <img loading="lazy" src="/image.png?offscreen" alt="">
+</div>
+<div class="spacer"></div>
+<img loading="lazy" src="/image.png?below" alt="">
+</body>
+</html>

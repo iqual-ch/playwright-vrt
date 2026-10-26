@@ -174,7 +174,7 @@ export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   hideDefaults: true,
   locale: 'de-CH',
   timezoneId: 'Europe/Zurich',
-  workers: 2,
+  workers: 3,
   preflight: true,
   settle: {
     scroll: true,
