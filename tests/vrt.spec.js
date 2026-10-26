@@ -193,7 +193,7 @@ function captureImages(action) {
   const width = document.documentElement.clientWidth;
   const images = Array.from(document.images).filter((img) => {
     const r = img.getBoundingClientRect();
-    return img.checkVisibility() && r.height > 0 && r.right > 0 && r.left < width;
+    return img.checkVisibility() && r.right >= 0 && r.left < width;
   });
   if (action === 'eager') {
     for (const img of images) if (img.loading === 'lazy') img.loading = 'eager';

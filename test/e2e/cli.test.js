@@ -293,6 +293,23 @@ test('H: images that cannot appear in the screenshot are not waited for', { time
   ws.passed();
 });
 
+test('I: a slow lazy image without dimensions is waited for, so its removal is a visual difference', { timeout: TEST_TIMEOUT }, async (t) => {
+  // While loading, an image without width/height has no height.
+  const pages = { '/de/': 'slow.html' };
+  const reference = await startSite({ pages, sitemap: ['/de/'], vars: { src: '/image.png' }, delays: { '/image.png': 5000 } });
+  const site = await startSite({ pages, sitemap: ['/de/'], vars: { src: '/removed.png' } });
+  t.after(() => Promise.all([reference.close(), site.close()]));
+  const cwd = makeWorkspace(reference.origin, site.origin);
+  const ws = keepOnFailure(t, cwd);
+
+  const run = await runCli(cwd);
+  assert.equal(run.code, 1, describeRun('run', run, cwd));
+  const summary = readJson(path.join(cwd, 'playwright-report', 'summary.json'));
+  assert.equal(summary.failed, 1, describeRun('run', run, cwd));
+
+  ws.passed();
+});
+
 // --- helpers -------------------------------------------------------------------------
 
 function makeWorkspace(referenceUrl, testUrl, config = {}) {
