@@ -25,7 +25,7 @@ export default {
   testMatch: '**/*.spec.js', // JavaScript test files
   fullyParallel: true,
   retries: process.env.CI ? 2 : 1,
-  workers: vrtConfig.workers || 2,
+  workers: vrtConfig.workers || 3,
   // goto (45 s) + settle + toHaveScreenshot (30 s) must fit
   timeout: 120000,
 

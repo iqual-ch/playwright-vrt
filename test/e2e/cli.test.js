@@ -19,6 +19,8 @@ const HEADER_VALUE = 'iqual/playwright-vrt';
 // Each scenario runs Playwright twice (baseline + test) with retries; leave room for CI=true (retries: 2).
 const TEST_TIMEOUT = 240_000;
 const CLI_TIMEOUT = 210_000;
+// IMAGES_TIMEOUT in tests/vrt.spec.js
+const IMAGES_TIMEOUT = 10_000;
 
 // Three pages; "/" redirects to "/de/" so the plan has to resolve the final path.
 const PAGES = { '/de/': 'home.html', '/de/about': 'about.html', '/de/contact': 'contact.html' };
@@ -267,6 +269,30 @@ test('G: requests to a blocked host are aborted and third-party hosts never get 
   ws.passed();
 });
 
+test('H: images that cannot appear in the screenshot are not waited for', { timeout: TEST_TIMEOUT }, async (t) => {
+  // Lazy images in a hidden tab and an off-screen slide never load; waiting for them takes the full image timeout.
+  const pages = { '/de/': 'lazy.html' };
+  const reference = await startSite({ pages, sitemap: ['/de/'] });
+  const site = await startSite({ pages, sitemap: ['/de/'] });
+  t.after(() => Promise.all([reference.close(), site.close()]));
+  const cwd = makeWorkspace(reference.origin, site.origin);
+  const ws = keepOnFailure(t, cwd);
+
+  const run = await runCli(cwd);
+  assert.equal(run.code, 0, describeRun('run', run, cwd));
+
+  const durations = testDurations(readJson(path.join(cwd, 'playwright-report', 'results.json')));
+  assert.ok(durations.length > 0 && durations.every((ms) => ms < IMAGES_TIMEOUT), `each test finished within ${IMAGES_TIMEOUT} ms: ${JSON.stringify(durations)}`);
+
+  for (const [label, host] of [['reference host', reference], ['test host', site]]) {
+    const requested = new Set(host.requests.filter((r) => r.path.startsWith('/image.png')).map((r) => r.path.split('?')[1]));
+    assert.ok(requested.has('slide') && requested.has('below'), `${label}: the images in the screenshot loaded: ${JSON.stringify([...requested])}`);
+    assert.ok(!requested.has('hidden') && !requested.has('offscreen'), `${label}: hidden and off-screen images were not loaded: ${JSON.stringify([...requested])}`);
+  }
+
+  ws.passed();
+});
+
 // --- helpers -------------------------------------------------------------------------
 
 function makeWorkspace(referenceUrl, testUrl, config = {}) {
@@ -344,6 +370,17 @@ function listPngs(dir) {
   };
   walk(dir);
   return out;
+}
+
+/** Durations (ms) of every test attempt in a Playwright JSON report. */
+function testDurations(report) {
+  const durations = [];
+  const walk = (suite) => {
+    for (const child of suite.suites || []) walk(child);
+    for (const spec of suite.specs || []) for (const t of spec.tests) for (const r of t.results) durations.push(r.duration);
+  };
+  walk(report);
+  return durations;
 }
 
 function assertHeaderOnEveryRequest(requests, label) {

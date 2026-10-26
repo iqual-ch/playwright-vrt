@@ -139,8 +139,9 @@ for (const entry of entries) {
   });
 }
 
-// Scroll through the page so lazy images and scroll-triggered reveals fire, then wait for images and fonts.
+// Start lazy images and scroll through the page so scroll-triggered reveals fire, then wait for images and fonts.
 async function settlePage(page, viewportHeight) {
+  await page.evaluate(captureImages, 'eager').catch(() => undefined);
   if (settle.scroll) {
     const totalHeight = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => 0);
     const step = Math.max(200, Math.floor(viewportHeight * 0.8));
@@ -158,7 +159,7 @@ async function settlePage(page, viewportHeight) {
 async function waitForMedia(page) {
   if (settle.waitForImages) {
     await Promise.race([
-      page.evaluate(waitForImages).catch(() => undefined),
+      page.evaluate(captureImages, 'wait').catch(() => undefined),
       page.waitForTimeout(IMAGES_TIMEOUT),
     ]);
   }
@@ -167,19 +168,39 @@ async function waitForMedia(page) {
   await page.evaluate(() => document.fonts.ready).catch(() => undefined);
 
   // Let the layout settle after the scroll
-  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await nextFrames(page);
   await page.waitForTimeout(500);
 }
 
 // A full-page capture resizes the viewport (resize handlers, lazy images); a throwaway one settles that first.
 async function prepareCapture(page) {
   await page.screenshot({ fullPage: true, animations: 'disabled', stylePath, timeout: WARMUP_CAPTURE_TIMEOUT }).catch(() => undefined);
-  await waitForMedia(page);
+  const pending = await page.evaluate(captureImages, 'pending').catch(() => 1);
+  if (pending > 0) await waitForMedia(page);
+  else await nextFrames(page);
 }
 
-/** Runs in the browser: resolve once every <img> has loaded or failed. */
-function waitForImages() {
-  const pending = Array.from(document.images).filter((img) => !img.complete);
+function nextFrames(page) {
+  return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))).catch(() => undefined);
+}
+
+/**
+ * Runs in the browser, on the <img> that can appear in the capture: rendered and within the page width (lazy
+ * images in hidden tabs or off-screen slides never load). 'eager' starts the lazy ones, 'pending' counts the
+ * unfinished ones, 'wait' resolves once those have loaded or failed.
+ */
+function captureImages(action) {
+  const width = document.documentElement.clientWidth;
+  const images = Array.from(document.images).filter((img) => {
+    const r = img.getBoundingClientRect();
+    return img.checkVisibility() && r.height > 0 && r.right > 0 && r.left < width;
+  });
+  if (action === 'eager') {
+    for (const img of images) if (img.loading === 'lazy') img.loading = 'eager';
+    return images.length;
+  }
+  const pending = images.filter((img) => !img.complete);
+  if (action === 'pending') return pending.length;
   return Promise.all(pending.map((img) => new Promise((resolve) => {
     img.addEventListener('load', resolve, { once: true });
     img.addEventListener('error', resolve, { once: true });
