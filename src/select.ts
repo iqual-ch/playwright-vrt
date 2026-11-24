@@ -18,6 +18,8 @@ export const DEFAULT_LANGUAGES = ['de', 'fr', 'it', 'en', 'rm'];
 
 /** Section name of the homepage and language roots. */
 export const ROOT_SECTION = '/';
+/** Section name of the paths pinned in the config. */
+export const PINNED_SECTION = '(pinned)';
 /** Section name of the shared group of single top-level pages. */
 export const SINGLE_PAGES_SECTION = '(single pages)';
 
@@ -49,7 +51,9 @@ export function selectURLs(
   const entries = groupBySection(urls, languages);
   let picked: Set<number>;
 
-  if (urls.length <= maxUrls) {
+  if (maxUrls <= 0) {
+    picked = new Set();
+  } else if (urls.length <= maxUrls) {
     picked = new Set(entries.map(e => e.index));
   } else if (strategy === 'ordered') {
     picked = new Set(entries.slice(0, maxUrls).map(e => e.index));
@@ -64,6 +68,45 @@ export function selectURLs(
     urls: entries.filter(e => picked.has(e.index)).map(e => e.url),
     sections: sectionStats(entries, picked),
   };
+}
+
+/**
+ * Pinned URLs are always tested and come first; they count against maxUrls,
+ * and a pinned URL that is also in the sitemap list counts once.
+ */
+export function selectWithPinned(
+  urls: string[],
+  pinned: string[],
+  maxUrls: number,
+  strategy: SelectionStrategy = 'sectionRotation',
+  languages: Iterable<string> = DEFAULT_LANGUAGES,
+): Selection {
+  const pins = Array.from(new Set(pinned));
+  if (pins.length === 0) return selectURLs(urls, maxUrls, strategy, languages);
+
+  const pinnedKeys = new Set(pins.map(urlKey));
+  const rest = urls.filter(url => !pinnedKeys.has(urlKey(url)));
+  const selection = selectURLs(rest, maxUrls - pins.length, strategy, languages);
+  return {
+    strategy,
+    urls: [...pins, ...selection.urls],
+    sections: [{ section: PINNED_SECTION, total: pins.length, picked: pins.length }, ...selection.sections],
+  };
+}
+
+/** Absolute URLs of the configured paths on the reference host. */
+export function resolvePaths(paths: string[], baseUrl: string): string[] {
+  return paths.map(p => new URL(p, baseUrl).toString());
+}
+
+/** Comparison key: host, path without trailing slash, query. */
+function urlKey(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${u.host}${u.pathname.replace(/\/+$/, '') || '/'}${u.search}`;
+  } catch {
+    return url;
+  }
 }
 
 /**

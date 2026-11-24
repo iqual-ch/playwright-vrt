@@ -4,6 +4,7 @@
   "sitemapPath": "/sitemap.xml",
   "maxUrls": 25,
   "selection": "sectionRotation",
+  "paths": ["/de/cart"],
   "exclude": [
     "**/admin/**",
     "**/user/**"

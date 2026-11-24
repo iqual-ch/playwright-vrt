@@ -4,6 +4,9 @@ import {
   groupBySection,
   hreflangCodes,
   selectURLs,
+  selectWithPinned,
+  resolvePaths,
+  PINNED_SECTION,
   ROOT_SECTION,
   SINGLE_PAGES_SECTION,
 } from '../../src/select.js';
@@ -137,4 +140,35 @@ test('summary lists the sections and picks', () => {
   });
   assert.ok(lines.includes('sectionRotation: 5 of 40 URLs (50 in the source) from 2 sections.'));
   assert.ok(lines.includes('| `/news` | 4 | 39 |'));
+});
+
+test('pinned paths come first and count against maxUrls', () => {
+  const pinned = resolvePaths(['/de/cart', '/de/checkout'], host);
+  const selection = selectWithPinned(bigFirstSitemap(), pinned, 25);
+  assert.equal(selection.urls.length, 25);
+  assert.deepEqual(selection.urls.slice(0, 2), [u('/de/cart'), u('/de/checkout')]);
+  assert.deepEqual(selection.sections[0], { section: PINNED_SECTION, total: 2, picked: 2 });
+  assert.deepEqual(selection.urls.slice(2), selectURLs(bigFirstSitemap(), 23).urls);
+});
+
+test('a pinned path that is also in the sitemap counts once', () => {
+  const urls = bigFirstSitemap();
+  const selection = selectWithPinned(urls, resolvePaths(['/de/news/page-3/'], host), 25);
+  assert.equal(selection.urls.length, 25);
+  assert.equal(selection.urls.filter(x => x.includes('/de/news/page-3')).length, 1);
+  assert.equal(selection.sections.find(s => s.section === '/news')!.total, 5);
+});
+
+test('pinned paths beyond maxUrls are all tested, without sitemap URLs', () => {
+  const pinned = resolvePaths(['/a', '/b', '/c'], host);
+  for (const strategy of ['sectionRotation', 'ordered', 'reverse'] as const) {
+    assert.deepEqual(selectWithPinned(bigFirstSitemap(), pinned, 2, strategy).urls, pinned);
+  }
+});
+
+test('config: paths must start with a slash', () => {
+  const base = { referenceUrl: u('/'), testUrl: 'https://test.example.com' };
+  assert.doesNotThrow(() => validateConfig(mergeConfig({ ...base, paths: ['/de/cart'] })));
+  assert.throws(() => validateConfig(mergeConfig({ ...base, paths: ['de/cart'] })), /paths must be/);
+  assert.equal('paths' in mergeConfig(base), false, 'no default, so the config hash is unchanged');
 });
