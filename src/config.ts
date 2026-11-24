@@ -11,6 +11,8 @@ export interface VRTConfig {
   maxUrls?: number;
   /** How maxUrls URLs are picked from the filtered sitemap. */
   selection?: SelectionStrategy;
+  /** Paths always tested (ignoring include/exclude); they count against maxUrls. */
+  paths?: string[];
   exclude?: string[];
   include?: string[];
   crawlOptions?: {
@@ -313,6 +315,12 @@ export function validateConfig(config: VRTConfig): void {
 
   if (config.selection !== undefined && !isSelectionStrategy(config.selection)) {
     throw new Error(`selection must be one of: ${SELECTION_STRATEGIES.join(', ')}`);
+  }
+
+  if (config.paths !== undefined) {
+    if (!Array.isArray(config.paths) || config.paths.some(p => typeof p !== 'string' || !p.startsWith('/'))) {
+      throw new Error('paths must be a list of paths starting with "/"');
+    }
   }
 
   if (config.workers !== undefined && (!Number.isInteger(config.workers) || config.workers < 1)) {

@@ -102,6 +102,7 @@ Full config example (includes URLs + advanced settings):
 | `sitemapPath` | `/sitemap.xml` | Sitemap on the reference host; crawler fallback (homepage links) if it fails. |
 | `maxUrls` | `25` | Number of URLs tested (after `include`/`exclude`). |
 | `selection` | `sectionRotation` | How the `maxUrls` URLs are picked from the filtered list. `sectionRotation`: homepage and language roots first, then one URL per section per round, largest sections first (a section is the first path segment after an optional language prefix; single top-level pages share one group), so one large section can't take the whole budget. `ordered`: the first `maxUrls` entries in sitemap order (behaviour before v0.8). `reverse`: the last `maxUrls` entries. All are deterministic; a sitemap with at most `maxUrls` URLs is tested in full. Language prefixes are `de`, `fr`, `it`, `en`, `rm` plus the `hreflang` codes of the sitemap. The sections and their picks are listed in `summary.md`. |
+| `paths` | unset | Paths always tested, e.g. `["/de/cart", "/de/checkout"]` (pages the automatic selection can't know are important, also ones not in the sitemap). They ignore `include`/`exclude`, come first and count against `maxUrls`: 2 paths with `maxUrls: 25` leave 23 URLs from the sitemap. A path that is also in the sitemap counts once. Errors on a pinned path are reported like on any other URL. |
 | `include` / `exclude` | `["*"]` / `[]` | Glob patterns (micromatch) matched against `pathname + search`, e.g. `"/de"` or `"**/user/**"`. Use `exclude` for URLs that behave differently on the two hosts (redirects to other domains, SSO, search). |
 | `viewports` | desktop 1920×1080 | One Playwright project per viewport. |
 | `threshold.maxDiffPixels` | `500` | Differing pixels tolerated per screenshot. Same budget on every URL regardless of page length. |
@@ -223,7 +224,7 @@ The action appends `summary.md` to the GitHub step summary and uploads it as a s
 ## How It Works
 
 1. **Collect URLs** - Parse sitemap or crawl site (cached after first run)
-2. **Filter & select** - Apply include/exclude patterns, pick maxUrls URLs (`selection`, section rotation by default)
+2. **Filter & select** - Apply include/exclude patterns, add the pinned `paths`, fill up to maxUrls from the sitemap (`selection`, section rotation by default)
 3. **Pre-flight** - One request per URL on both hosts (warm-up, redirects, status log)
 4. **Create baseline** - Screenshot all URLs from `referenceUrl` (cached after first run). URLs whose reference screenshot fails (timeout, unstable page, HTTP error) are listed with the reason and fail in the test phase as "no baseline"; the test phase never writes a baseline, so a test screenshot can't become the golden.
 5. **Run tests** - Screenshot all URLs from `testUrl` and compare. Before each capture the page is scrolled through once, images and fonts are awaited, third-party hosts from `blockHosts` are blocked, and `mask`/`hide` selectors are applied. A throwaway full-page capture settles what the capture itself triggers (resize handlers, lazy images).

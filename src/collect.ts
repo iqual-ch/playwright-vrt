@@ -5,7 +5,7 @@ import Sitemapper from 'sitemapper';
 import micromatch from 'micromatch';
 import { chromium } from 'playwright';
 import type { VRTConfig } from './config.js';
-import { DEFAULT_LANGUAGES, hreflangCodes, selectURLs, type SectionStat, type SelectionStrategy } from './select.js';
+import { DEFAULT_LANGUAGES, hreflangCodes, resolvePaths, selectWithPinned, type SectionStat, type SelectionStrategy } from './select.js';
 
 export interface URLCollectionResult {
   urls: string[];
@@ -42,8 +42,9 @@ export async function collectURLs(config: VRTConfig): Promise<URLCollectionResul
   urls = Array.from(new Set(urls));
 
   // Limit to maxUrls
-  const filteredCount = urls.length;
-  const selection = selectURLs(urls, config.maxUrls || 25, config.selection || 'sectionRotation', languages);
+  const pinned = resolvePaths(config.paths || [], config.referenceUrl);
+  const filteredCount = new Set([...pinned, ...urls]).size;
+  const selection = selectWithPinned(urls, pinned, config.maxUrls || 25, config.selection || 'sectionRotation', languages);
 
   return {
     urls: selection.urls,
