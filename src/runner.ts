@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import type { VRTConfig } from './config.js';
 import { resolvePlaywrightCli } from './browser.js';
 import { buildPlan, pathOf, probeHost, type HostProbe, type Plan } from './preflight.js';
+import type { SectionStat, SelectionStrategy } from './select.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -179,7 +180,7 @@ export async function runVisualTests(options: RunnerOptions): Promise<TestResult
   const results = summarize(parsePlaywrightResults(outputDir), plan);
   results.exitCode = exitCode;
 
-  writeSummary(outputDir, config, results, plan);
+  writeSummary(outputDir, config, results, plan, readSelection(path.join(snapshotDir, 'selection.json')));
 
   return results;
 }
@@ -379,7 +380,35 @@ function summarize(outcomes: TestOutcome[], plan: Plan): TestResults {
   return results;
 }
 
-function writeSummary(outputDir: string, config: VRTConfig, results: TestResults, plan: Plan): void {
+export interface SelectionInfo {
+  strategy: SelectionStrategy;
+  total: number;
+  filtered: number;
+  sections: SectionStat[];
+}
+
+function readSelection(file: string): SelectionInfo | undefined {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf-8'));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Markdown lines listing the sections found and how many URLs each got. */
+export function selectionLines(selection: SelectionInfo): string[] {
+  const lines = [
+    '', '### URL selection', '',
+    `${selection.strategy}: ${selection.sections.reduce((n, s) => n + s.picked, 0)} of ${selection.filtered} URLs (${selection.total} in the source) from ${selection.sections.length} sections.`,
+    '',
+    '| Section | Picked | URLs |',
+    '|---|---:|---:|',
+  ];
+  for (const s of selection.sections) lines.push(`| \`${s.section}\` | ${s.picked} | ${s.total} |`);
+  return lines;
+}
+
+function writeSummary(outputDir: string, config: VRTConfig, results: TestResults, plan: Plan, selection?: SelectionInfo): void {
   fs.mkdirSync(outputDir, { recursive: true });
 
   const failed = results.outcomes.filter(o => o.status === 'failed' && !o.noBaseline);
@@ -412,6 +441,7 @@ function writeSummary(outputDir: string, config: VRTConfig, results: TestResults
     lines.push('', '### Pre-flight notes', '');
     for (const e of noted) lines.push(`- ${e.url}: ${e.notes!.join('; ')}`);
   }
+  if (selection) lines.push(...selectionLines(selection));
   lines.push('');
 
   fs.writeFileSync(path.join(outputDir, 'summary.md'), lines.join('\n'), 'utf-8');
@@ -425,6 +455,7 @@ function writeSummary(outputDir: string, config: VRTConfig, results: TestResults
     total: results.total,
     outcomes: results.outcomes,
     preflightNotes: noted.map(e => ({ url: e.url, notes: e.notes })),
+    selection,
   }, null, 2), 'utf-8');
 }
 
