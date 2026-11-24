@@ -170,11 +170,21 @@ async function main() {
 
       console.log(`✓ Found ${urlResult.total} URLs, filtered to ${urlResult.filtered}, using top ${urlResult.urls.length}`);
       console.log(`  Source: ${urlResult.source}`);
+      console.log(`  Selection: ${urlResult.strategy}, ${urlResult.sections.length} sections`);
+      if (args.verbose) {
+        for (const s of urlResult.sections) console.log(`    ${s.section}: ${s.picked}/${s.total}`);
+      }
 
       urls = urlResult.urls;
 
       // Save URLs to snapshot directory (co-located with snapshots for easy caching)
       fs.writeFileSync(urlsPath, JSON.stringify(urls, null, 2), 'utf-8');
+      fs.writeFileSync(path.join(snapshotDir, 'selection.json'), JSON.stringify({
+        strategy: urlResult.strategy,
+        total: urlResult.total,
+        filtered: urlResult.filtered,
+        sections: urlResult.sections,
+      }, null, 2), 'utf-8');
 
       // Save cache hashes based on final config object
       saveCacheHashes(snapshotDir, config);

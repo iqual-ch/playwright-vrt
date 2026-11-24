@@ -2,12 +2,15 @@
 
 import * as fs from 'fs';
 import { createHash } from 'crypto';
+import { isSelectionStrategy, SELECTION_STRATEGIES, type SelectionStrategy } from './select.js';
 
 export interface VRTConfig {
   referenceUrl: string;
   testUrl: string;
   sitemapPath?: string;
   maxUrls?: number;
+  /** How maxUrls URLs are picked from the filtered sitemap. */
+  selection?: SelectionStrategy;
   exclude?: string[];
   include?: string[];
   crawlOptions?: {
@@ -151,6 +154,7 @@ export const DEFAULT_HIDE: string[] = [
 export const DEFAULT_CONFIG: Partial<VRTConfig> = {
   sitemapPath: '/sitemap.xml',
   maxUrls: 25,
+  selection: 'sectionRotation',
   exclude: [],
   include: ['*'],
   crawlOptions: {
@@ -305,6 +309,10 @@ export function validateConfig(config: VRTConfig): void {
     if (threshold !== undefined && (threshold < 0 || threshold > 1)) {
       throw new Error('threshold.threshold must be between 0 and 1');
     }
+  }
+
+  if (config.selection !== undefined && !isSelectionStrategy(config.selection)) {
+    throw new Error(`selection must be one of: ${SELECTION_STRATEGIES.join(', ')}`);
   }
 
   if (config.workers !== undefined && (!Number.isInteger(config.workers) || config.workers < 1)) {

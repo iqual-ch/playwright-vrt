@@ -3,6 +3,7 @@
   "testUrl": "https://preview.example.com",
   "sitemapPath": "/sitemap.xml",
   "maxUrls": 25,
+  "selection": "sectionRotation",
   "exclude": [
     "**/admin/**",
     "**/user/**"

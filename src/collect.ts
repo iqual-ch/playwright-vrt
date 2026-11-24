@@ -5,22 +5,27 @@ import Sitemapper from 'sitemapper';
 import micromatch from 'micromatch';
 import { chromium } from 'playwright';
 import type { VRTConfig } from './config.js';
+import { DEFAULT_LANGUAGES, hreflangCodes, selectURLs, type SectionStat, type SelectionStrategy } from './select.js';
 
 export interface URLCollectionResult {
   urls: string[];
   source: 'sitemap' | 'crawl';
   total: number;
   filtered: number;
+  strategy: SelectionStrategy;
+  sections: SectionStat[];
 }
 
 export async function collectURLs(config: VRTConfig): Promise<URLCollectionResult> {
   let urls: string[] = [];
   let source: 'sitemap' | 'crawl' = 'sitemap';
+  let languages: string[] = DEFAULT_LANGUAGES;
   const headers = config.extraHTTPHeaders || {};
 
   // Try sitemap first
   try {
     urls = await collectFromSitemap(config.referenceUrl, config.sitemapPath || '/sitemap.xml', headers);
+    languages = [...DEFAULT_LANGUAGES, ...await sitemapLanguages(config.referenceUrl, config.sitemapPath || '/sitemap.xml', headers)];
   } catch (error) {
     console.warn(`⚠️ Sitemap fetch failed (${error instanceof Error ? error.message : error}), falling back to crawler`);
     // Fallback to crawling
@@ -37,16 +42,40 @@ export async function collectURLs(config: VRTConfig): Promise<URLCollectionResul
   urls = Array.from(new Set(urls));
 
   // Limit to maxUrls
-  const maxUrls = config.maxUrls || 25;
   const filteredCount = urls.length;
-  urls = urls.slice(0, maxUrls);
+  const selection = selectURLs(urls, config.maxUrls || 25, config.selection || 'sectionRotation', languages);
 
   return {
-    urls,
+    urls: selection.urls,
     source,
     total: totalUrls,
     filtered: filteredCount,
+    strategy: selection.strategy,
+    sections: selection.sections,
   };
+}
+
+/**
+ * hreflang codes of the sitemap (or of the first child of a sitemap index).
+ * Best effort: an error only means no extra language prefixes.
+ */
+async function sitemapLanguages(baseUrl: string, sitemapPath: string, headers: Record<string, string>): Promise<string[]> {
+  try {
+    let xml = await fetchText(new URL(sitemapPath, baseUrl).toString(), headers);
+    if (/<(\w+:)?sitemapindex[\s>]/.test(xml)) {
+      const child = xml.match(/<(?:\w+:)?loc>\s*([^<\s]+)\s*<\/(?:\w+:)?loc>/);
+      xml = child ? await fetchText(child[1].replace(/&amp;/g, '&'), headers) : '';
+    }
+    return hreflangCodes(xml);
+  } catch {
+    return [];
+  }
+}
+
+async function fetchText(url: string, headers: Record<string, string>): Promise<string> {
+  const response = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.text();
 }
 
 async function collectFromSitemap(baseUrl: string, sitemapPath: string, headers: Record<string, string>): Promise<string[]> {
